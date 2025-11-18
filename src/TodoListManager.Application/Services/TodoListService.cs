@@ -24,6 +24,7 @@ public class TodoListService
     private readonly IValidator<UpdateTodoItemCommand> _updateValidator;
     private readonly IValidator<RemoveTodoItemCommand> _removeValidator;
     private readonly IValidator<RegisterProgressionCommand> _registerProgressionValidator;
+    private readonly TodoListPresentationService _presentationService;
 
     public TodoListService(
         ITodoList todoList,
@@ -35,7 +36,8 @@ public class TodoListService
         IValidator<AddTodoItemCommand> addValidator,
         IValidator<UpdateTodoItemCommand> updateValidator,
         IValidator<RemoveTodoItemCommand> removeValidator,
-        IValidator<RegisterProgressionCommand> registerProgressionValidator)
+        IValidator<RegisterProgressionCommand> registerProgressionValidator,
+        TodoListPresentationService presentationService)
     {
         _todoList = todoList;
         _addHandler = addHandler;
@@ -47,6 +49,7 @@ public class TodoListService
         _updateValidator = updateValidator;
         _removeValidator = removeValidator;
         _registerProgressionValidator = registerProgressionValidator;
+        _presentationService = presentationService;
     }
 
     /// <summary>
@@ -135,7 +138,7 @@ public class TodoListService
     /// </summary>
     public void PrintItems()
     {
-        _todoList.PrintItems();
+        _presentationService.PrintItems();
     }
 
     /// <summary>

@@ -2,22 +2,22 @@
 
 using TodoListManager.Domain.Entities;
 using TodoListManager.Domain.Exceptions;
-using TodoListManager.Domain.Repositories;
+using TodoListManager.Domain.Services;
 
 namespace TodoListManager.Domain.Aggregates;
 
 /// <summary>
-/// Manages a collection of todo items with business rules and validation.
+/// TodoList aggregate root - manages a collection of todo items with business rules.
 /// </summary>
 public class TodoList : ITodoList
 {
     private readonly Dictionary<int, TodoItem> _items;
-    private readonly ITodoListRepository _repository;
+    private readonly ICategoryValidator _categoryValidator;
 
-    public TodoList(ITodoListRepository repository)
+    public TodoList(ICategoryValidator categoryValidator)
     {
         _items = new Dictionary<int, TodoItem>();
-        _repository = repository;
+        _categoryValidator = categoryValidator ?? throw new ArgumentNullException(nameof(categoryValidator));
     }
 
     /// <summary>
@@ -30,7 +30,11 @@ public class TodoList : ITodoList
     /// <exception cref="InvalidCategoryException">Thrown when the category is not valid.</exception>
     public void AddItem(int id, string title, string description, string category)
     {
-        ValidateCategory(category);
+        // Domain validation through domain service
+        if (!_categoryValidator.IsValidCategory(category))
+        {
+            throw new InvalidCategoryException(category);
+        }
 
         var item = new TodoItem(id, title, description, category);
         _items[id] = item;
@@ -47,6 +51,7 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
+        // Business rule: Cannot modify items with more than 50% progress
         if (item.GetTotalProgress() > 50m)
         {
             throw new TodoItemCannotBeModifiedException(id);
@@ -65,6 +70,7 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
+        // Business rule: Cannot remove items with more than 50% progress
         if (item.GetTotalProgress() > 50m)
         {
             throw new TodoItemCannotBeModifiedException(id);
@@ -85,20 +91,20 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        // Validate percent is valid (greater than 0 and less than 100)
-        if (percent <= 0 || percent >= 100)
+        // Business rule: Percent must be valid
+        if (percent is <= 0 or >= 100)
         {
             throw new InvalidProgressionException("Percent must be greater than 0 and less than 100.");
         }
 
-        // Validate date is greater than all existing progression dates
+        // Business rule: Date must be greater than all existing progression dates
         var lastDate = item.GetLastProgressionDate();
         if (lastDate.HasValue && dateTime <= lastDate.Value)
         {
             throw new InvalidProgressionException("The progression date must be greater than all existing progression dates.");
         }
 
-        // Validate that adding this percent won't exceed 100%
+        // Business rule: Total progress cannot exceed 100%
         var currentTotal = item.GetTotalProgress();
         if (currentTotal + percent > 100m)
         {
@@ -106,49 +112,6 @@ public class TodoList : ITodoList
         }
 
         item.AddProgression(dateTime, percent);
-    }
-
-    /// <summary>
-    /// Prints all todo items to the console with their progression details.
-    /// </summary>
-    public void PrintItems()
-    {
-        var sortedItems = _items.Values.OrderBy(i => i.Id).ToList();
-
-        foreach (var item in sortedItems)
-        {
-            PrintTodoItem(item);
-        }
-    }
-
-    private void PrintTodoItem(TodoItem item)
-    {
-        Console.WriteLine($"{item.Id}) {item.Title} - {item.Description} ({item.Category}) Completed:{item.IsCompleted}");
-
-        decimal cumulativePercent = 0;
-        foreach (var progression in item.Progressions)
-        {
-            cumulativePercent += progression.Percent;
-            var progressBar = GenerateProgressBar(cumulativePercent);
-            Console.WriteLine($"{progression.Date} - {cumulativePercent}% {progressBar}");
-        }
-
-        if (item.Progressions.Count > 0)
-        {
-            Console.WriteLine(); // Empty line between items
-        }
-    }
-
-    private string GenerateProgressBar(decimal percent)
-    {
-        const int totalBars = 50;
-        var filledBars = (int)Math.Round(percent / 100m * totalBars);
-        var emptyBars = totalBars - filledBars;
-
-        var filled = new string('O', filledBars);
-        var empty = new string(' ', emptyBars);
-
-        return $"|{filled}{empty}|";
     }
 
     private TodoItem GetItemOrThrow(int id)
@@ -159,15 +122,6 @@ public class TodoList : ITodoList
         }
 
         return item;
-    }
-
-    private void ValidateCategory(string category)
-    {
-        var validCategories = _repository.GetAllCategories();
-        if (!validCategories.Contains(category, StringComparer.OrdinalIgnoreCase))
-        {
-            throw new InvalidCategoryException(category);
-        }
     }
 
     /// <summary>

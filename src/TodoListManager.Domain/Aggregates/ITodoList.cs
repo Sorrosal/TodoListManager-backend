@@ -1,5 +1,7 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using TodoListManager.Domain.Entities;
+
 namespace TodoListManager.Domain.Aggregates;
 
 /// <summary>
@@ -38,7 +40,8 @@ public interface ITodoList
     public void RegisterProgression(int id, DateTime dateTime, decimal percent);
 
     /// <summary>
-    /// Prints all todo items to the console.
+    /// Gets all todo items.
     /// </summary>
-    public void PrintItems();
+    /// <returns>A read-only list of all todo items.</returns>
+    public IReadOnlyList<TodoItem> GetAllItems();
 }

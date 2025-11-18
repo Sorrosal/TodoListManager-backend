@@ -12,6 +12,9 @@ using TodoListManager.Infrastructure.Services;
 
 namespace TodoListManager.API.Extensions;
 
+/// <summary>
+/// Extension methods for service registration.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddValidation(this IServiceCollection services)
@@ -22,16 +25,26 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
-        services.AddSingleton<ITodoListRepository, InMemoryTodoListRepository>();
-        services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+        // Infrastructure service registrations
         services.AddScoped<ITokenService, JwtTokenService>();
+        
         return services;
     }
 
     public static IServiceCollection AddDomain(this IServiceCollection services)
     {
+        // Domain service registrations
+        services.AddSingleton<IPasswordHasher, PasswordHasher>();
+        services.AddSingleton<ICategoryValidator, CategoryValidator>();
+        
+        // Repository registrations
+        services.AddSingleton<ITodoListRepository, InMemoryTodoListRepository>();
+        services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+        
+        // Aggregate registrations
         services.AddSingleton<TodoList>();
         services.AddSingleton<ITodoList>(sp => sp.GetRequiredService<TodoList>());
+        
         return services;
     }
 
@@ -46,10 +59,9 @@ public static class ServiceCollectionExtensions
         // Register query handlers
         services.AddScoped<GetAllTodoItemsQueryHandler>();
 
-        // Register application service
+        // Register application services
         services.AddScoped<TodoListService>();
-        
-        // Register authentication service
+        services.AddScoped<TodoListPresentationService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         return services;
