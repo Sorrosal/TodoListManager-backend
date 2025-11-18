@@ -2,7 +2,6 @@
 
 using Microsoft.AspNetCore.Mvc;
 using TodoListManager.Application.Services;
-using TodoListManager.Domain.Exceptions;
 
 namespace TodoListManager.API.Controllers;
 
@@ -20,113 +19,78 @@ public class TodoListController : ControllerBase
     [HttpPost("items")]
     public IActionResult AddItem([FromBody] AddItemRequest request)
     {
-        try
-        {
-            _todoListService.AddItem(request.Title, request.Description, request.Category);
-            return Ok(new { message = "Item added successfully" });
-        }
-        catch (InvalidCategoryException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var result = _todoListService.AddItem(request.Title, request.Description, request.Category);
+        
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(new { message = "Item added successfully" });
     }
 
     [HttpPut("items/{id}")]
     public IActionResult UpdateItem(int id, [FromBody] UpdateItemRequest request)
     {
-        try
+        var result = _todoListService.UpdateItem(id, request.Description);
+        
+        if (result.IsFailure)
         {
-            _todoListService.UpdateItem(id, request.Description);
-            return Ok(new { message = "Item updated successfully" });
+            if (result.Error.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(new { error = result.Error });
+            
+            return BadRequest(new { error = result.Error });
         }
-        catch (TodoItemNotFoundException ex)
-        {
-            return NotFound(new { error = ex.Message });
-        }
-        catch (TodoItemCannotBeModifiedException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        return Ok(new { message = "Item updated successfully" });
     }
 
     [HttpDelete("items/{id}")]
     public IActionResult RemoveItem(int id)
     {
-        try
+        var result = _todoListService.RemoveItem(id);
+        
+        if (result.IsFailure)
         {
-            _todoListService.RemoveItem(id);
-            return Ok(new { message = "Item removed successfully" });
+            if (result.Error.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(new { error = result.Error });
+            
+            return BadRequest(new { error = result.Error });
         }
-        catch (TodoItemNotFoundException ex)
-        {
-            return NotFound(new { error = ex.Message });
-        }
-        catch (TodoItemCannotBeModifiedException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        return Ok(new { message = "Item removed successfully" });
     }
 
     [HttpPost("items/{id}/progressions")]
     public IActionResult RegisterProgression(int id, [FromBody] RegisterProgressionRequest request)
     {
-        try
+        var result = _todoListService.RegisterProgression(id, request.Date, request.Percent);
+        
+        if (result.IsFailure)
         {
-            _todoListService.RegisterProgression(id, request.Date, request.Percent);
-            return Ok(new { message = "Progression registered successfully" });
+            if (result.Error.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return NotFound(new { error = result.Error });
+            
+            return BadRequest(new { error = result.Error });
         }
-        catch (TodoItemNotFoundException ex)
-        {
-            return NotFound(new { error = ex.Message });
-        }
-        catch (InvalidProgressionException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        return Ok(new { message = "Progression registered successfully" });
     }
 
     [HttpGet("items")]
     public IActionResult GetAllItems()
     {
-        try
-        {
-            var result = _todoListService.GetAllItems();
-            return Ok(result.Items);
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        var result = _todoListService.GetAllItems();
+        
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
+
+        return Ok(result.Value.Items);
     }
 
     [HttpPost("items/print")]
     public IActionResult PrintItems()
     {
-        try
-        {
-            _todoListService.PrintItems();
-            return Ok(new { message = "Items printed to console" });
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+        _todoListService.PrintItems();
+        return Ok(new { message = "Items printed to console" });
     }
 }
 
