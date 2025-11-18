@@ -40,6 +40,35 @@ public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
         var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
         options.IncludeXmlComments(xmlPath);
+
+        // Add JWT Authentication
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer",
+            BearerFormat = "JWT"
+        });
+
+        options.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer"
+                    },
+                    Scheme = "oauth2",
+                    Name = "Bearer",
+                    In = ParameterLocation.Header
+                },
+                new List<string>()
+            }
+        });
     }
 
     private static OpenApiInfo CreateInfoForApiVersion(ApiVersionDescription description)
@@ -48,11 +77,11 @@ public class ConfigureSwaggerOptions : IConfigureOptions<SwaggerGenOptions>
         {
             Title = "Todo List Manager API",
             Version = description.ApiVersion.ToString(),
-            Description = "A RESTful API for managing todo list items with support for categories and progress tracking.",
+            Description = "A RESTful API for managing todo list items with support for categories and progress tracking. Authentication required for all endpoints except login.",
             Contact = new OpenApiContact
             {
                 Name = "Sergio Sorrosal",
-                Email = "sergio.sorrosal@example.com"
+                Email = "sergiosorrosalgayan@gmail.com"
             }
         };
 

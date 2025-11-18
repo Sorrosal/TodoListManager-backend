@@ -6,7 +6,9 @@ using TodoListManager.Application.Services;
 using TodoListManager.Application.Validators;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Repositories;
+using TodoListManager.Domain.Services;
 using TodoListManager.Infrastructure.Repositories;
+using TodoListManager.Infrastructure.Services;
 
 namespace TodoListManager.API.Extensions;
 
@@ -21,6 +23,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<ITodoListRepository, InMemoryTodoListRepository>();
+        services.AddSingleton<IUserRepository, InMemoryUserRepository>();
+        services.AddScoped<ITokenService, JwtTokenService>();
         return services;
     }
 
@@ -44,6 +48,9 @@ public static class ServiceCollectionExtensions
 
         // Register application service
         services.AddScoped<TodoListService>();
+        
+        // Register authentication service
+        services.AddScoped<IAuthenticationService, AuthenticationService>();
 
         return services;
     }

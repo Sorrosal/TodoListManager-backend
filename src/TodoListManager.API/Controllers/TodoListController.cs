@@ -1,6 +1,7 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
 using Asp.Versioning;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TodoListManager.Application.Services;
 
@@ -12,6 +13,7 @@ namespace TodoListManager.API.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Authorize]
 public class TodoListController : ControllerBase
 {
     private readonly TodoListService _todoListService;
@@ -27,6 +29,7 @@ public class TodoListController : ControllerBase
     /// <param name="request">The item details.</param>
     /// <returns>Success or error message.</returns>
     [HttpPost("items")]
+    [Authorize(Roles = "Admin,User")]
     public IActionResult AddItem([FromBody] AddItemRequest request)
     {
         var result = _todoListService.AddItem(request.Title, request.Description, request.Category);
@@ -44,6 +47,7 @@ public class TodoListController : ControllerBase
     /// <param name="request">The updated description.</param>
     /// <returns>Success or error message.</returns>
     [HttpPut("items/{id}")]
+    [Authorize(Roles = "Admin,User")]
     public IActionResult UpdateItem(int id, [FromBody] UpdateItemRequest request)
     {
         var result = _todoListService.UpdateItem(id, request.Description);
@@ -65,6 +69,7 @@ public class TodoListController : ControllerBase
     /// <param name="id">The item ID to remove.</param>
     /// <returns>Success or error message.</returns>
     [HttpDelete("items/{id}")]
+    [Authorize(Roles = "Admin")]
     public IActionResult RemoveItem(int id)
     {
         var result = _todoListService.RemoveItem(id);
@@ -87,6 +92,7 @@ public class TodoListController : ControllerBase
     /// <param name="request">The progression details.</param>
     /// <returns>Success or error message.</returns>
     [HttpPost("items/{id}/progressions")]
+    [Authorize(Roles = "Admin,User")]
     public IActionResult RegisterProgression(int id, [FromBody] RegisterProgressionRequest request)
     {
         var result = _todoListService.RegisterProgression(id, request.Date, request.Percent);
@@ -107,6 +113,7 @@ public class TodoListController : ControllerBase
     /// </summary>
     /// <returns>A list of all todo items.</returns>
     [HttpGet("items")]
+    [Authorize(Roles = "Admin,User")]
     public IActionResult GetAllItems()
     {
         var result = _todoListService.GetAllItems();
@@ -122,6 +129,7 @@ public class TodoListController : ControllerBase
     /// </summary>
     /// <returns>Success message.</returns>
     [HttpPost("items/print")]
+    [Authorize(Roles = "Admin")]
     public IActionResult PrintItems()
     {
         _todoListService.PrintItems();
