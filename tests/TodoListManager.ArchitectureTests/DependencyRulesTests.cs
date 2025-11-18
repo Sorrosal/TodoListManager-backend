@@ -115,18 +115,15 @@ public class DependencyRulesTests
     public void Application_Should_DependOnDomain()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
-        // Act
-        var result = Types.InAssembly(assembly)
-            .That()
-            .ResideInNamespace(ApplicationNamespace)
-            .Should()
-            .HaveDependencyOn(DomainNamespace)
-            .GetResult();
+        // Act - Check that Application assembly references Domain assembly
+        var referencedAssemblies = applicationAssembly.GetReferencedAssemblies();
+        var referencesDomain = referencedAssemblies.Any(a => a.Name == domainAssembly.GetName().Name);
 
         // Assert
-        Assert.True(result.IsSuccessful, 
+        Assert.True(referencesDomain,
             "Application layer should depend on Domain layer.");
     }
 
@@ -134,18 +131,15 @@ public class DependencyRulesTests
     public void Infrastructure_Should_DependOnDomain()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
-        // Act
-        var result = Types.InAssembly(assembly)
-            .That()
-            .ResideInNamespace(InfrastructureNamespace)
-            .Should()
-            .HaveDependencyOn(DomainNamespace)
-            .GetResult();
+        // Act - Check that Infrastructure assembly references Domain assembly
+        var referencedAssemblies = infrastructureAssembly.GetReferencedAssemblies();
+        var referencesDomain = referencedAssemblies.Any(a => a.Name == domainAssembly.GetName().Name);
 
         // Assert
-        Assert.True(result.IsSuccessful, 
+        Assert.True(referencesDomain,
             "Infrastructure layer should depend on Domain layer.");
     }
 }

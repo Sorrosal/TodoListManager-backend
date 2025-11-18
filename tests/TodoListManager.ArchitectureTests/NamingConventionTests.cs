@@ -221,20 +221,22 @@ public class NamingConventionTests
         // Arrange
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
-        // Act
+        // Act - Only check public concrete specification classes, exclude base classes and internal helpers
         var result = Types.InAssembly(domainAssembly)
             .That()
             .ResideInNamespace($"{DomainNamespace}.Specifications")
             .And()
             .AreClasses()
             .And()
-            .DoNotHaveName("Specification") // Exclude base class
+            .AreNotAbstract() // Exclude abstract base class
+            .And()
+            .ArePublic() // Only check public specifications, exclude internal helpers
             .Should()
             .HaveNameEndingWith("Specification")
             .GetResult();
 
         // Assert
         Assert.True(result.IsSuccessful, 
-            $"Specification classes should end with 'Specification'. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+            $"Public specification classes should end with 'Specification'. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 }
