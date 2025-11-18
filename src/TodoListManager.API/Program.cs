@@ -1,7 +1,9 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using FluentValidation;
 using TodoListManager.Application.Handlers;
 using TodoListManager.Application.Services;
+using TodoListManager.Application.Validators;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Repositories;
 using TodoListManager.Infrastructure.Repositories;
@@ -14,6 +16,9 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Register FluentValidation validators
+builder.Services.AddValidatorsFromAssemblyContaining<AddTodoItemCommandValidator>();
 
 // Register repository as singleton (in-memory)
 builder.Services.AddSingleton<ITodoListRepository, InMemoryTodoListRepository>();
