@@ -7,6 +7,9 @@ using TodoListManager.Domain.Exceptions;
 
 namespace TodoListManager.Application.Handlers;
 
+/// <summary>
+/// Handles the query to retrieve all todo items.
+/// </summary>
 public class GetAllTodoItemsQueryHandler
 {
     private readonly TodoList _todoList;
@@ -16,6 +19,11 @@ public class GetAllTodoItemsQueryHandler
         _todoList = todoList;
     }
 
+    /// <summary>
+    /// Handles the get all todo items query.
+    /// </summary>
+    /// <param name="query">The query request.</param>
+    /// <returns>A result containing all todo items or an error.</returns>
     public Result<GetAllTodoItemsQueryResult> Handle(GetAllTodoItemsQuery query)
     {
         try

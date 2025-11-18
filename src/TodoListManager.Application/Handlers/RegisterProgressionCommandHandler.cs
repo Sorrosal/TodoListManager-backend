@@ -7,6 +7,9 @@ using TodoListManager.Domain.Exceptions;
 
 namespace TodoListManager.Application.Handlers;
 
+/// <summary>
+/// Handles the command to register a progression for a todo item.
+/// </summary>
 public class RegisterProgressionCommandHandler
 {
     private readonly ITodoList _todoList;
@@ -16,6 +19,11 @@ public class RegisterProgressionCommandHandler
         _todoList = todoList;
     }
 
+    /// <summary>
+    /// Handles the register progression command.
+    /// </summary>
+    /// <param name="command">The command containing progression details.</param>
+    /// <returns>A result indicating success or failure.</returns>
     public Result Handle(RegisterProgressionCommand command)
     {
         try

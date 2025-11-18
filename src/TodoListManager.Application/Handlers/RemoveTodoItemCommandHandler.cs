@@ -7,6 +7,9 @@ using TodoListManager.Domain.Exceptions;
 
 namespace TodoListManager.Application.Handlers;
 
+/// <summary>
+/// Handles the command to remove a todo item.
+/// </summary>
 public class RemoveTodoItemCommandHandler
 {
     private readonly ITodoList _todoList;
@@ -16,6 +19,11 @@ public class RemoveTodoItemCommandHandler
         _todoList = todoList;
     }
 
+    /// <summary>
+    /// Handles the remove todo item command.
+    /// </summary>
+    /// <param name="command">The command containing the item ID to remove.</param>
+    /// <returns>A result indicating success or failure.</returns>
     public Result Handle(RemoveTodoItemCommand command)
     {
         try

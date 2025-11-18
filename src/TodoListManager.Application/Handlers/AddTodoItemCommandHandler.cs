@@ -8,6 +8,9 @@ using TodoListManager.Domain.Repositories;
 
 namespace TodoListManager.Application.Handlers;
 
+/// <summary>
+/// Handles the command to add a new todo item.
+/// </summary>
 public class AddTodoItemCommandHandler
 {
     private readonly ITodoList _todoList;
@@ -19,6 +22,11 @@ public class AddTodoItemCommandHandler
         _repository = repository;
     }
 
+    /// <summary>
+    /// Handles the add todo item command.
+    /// </summary>
+    /// <param name="command">The command containing item details.</param>
+    /// <returns>A result indicating success or failure.</returns>
     public Result Handle(AddTodoItemCommand command)
     {
         try

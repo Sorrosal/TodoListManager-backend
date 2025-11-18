@@ -7,6 +7,9 @@ using TodoListManager.Domain.Exceptions;
 
 namespace TodoListManager.Application.Handlers;
 
+/// <summary>
+/// Handles the command to update an existing todo item.
+/// </summary>
 public class UpdateTodoItemCommandHandler
 {
     private readonly ITodoList _todoList;
@@ -16,6 +19,11 @@ public class UpdateTodoItemCommandHandler
         _todoList = todoList;
     }
 
+    /// <summary>
+    /// Handles the update todo item command.
+    /// </summary>
+    /// <param name="command">The command containing the item ID and new description.</param>
+    /// <returns>A result indicating success or failure.</returns>
     public Result Handle(UpdateTodoItemCommand command)
     {
         try

@@ -6,6 +6,9 @@ using TodoListManager.Domain.Repositories;
 
 namespace TodoListManager.Domain.Aggregates;
 
+/// <summary>
+/// Manages a collection of todo items with business rules and validation.
+/// </summary>
 public class TodoList : ITodoList
 {
     private readonly Dictionary<int, TodoItem> _items;
@@ -17,6 +20,14 @@ public class TodoList : ITodoList
         _repository = repository;
     }
 
+    /// <summary>
+    /// Adds a new todo item to the list.
+    /// </summary>
+    /// <param name="id">The unique identifier.</param>
+    /// <param name="title">The title of the item.</param>
+    /// <param name="description">The description of the item.</param>
+    /// <param name="category">The category of the item.</param>
+    /// <exception cref="InvalidCategoryException">Thrown when the category is not valid.</exception>
     public void AddItem(int id, string title, string description, string category)
     {
         ValidateCategory(category);
@@ -25,6 +36,13 @@ public class TodoList : ITodoList
         _items[id] = item;
     }
 
+    /// <summary>
+    /// Updates the description of an existing todo item.
+    /// </summary>
+    /// <param name="id">The unique identifier of the item to update.</param>
+    /// <param name="description">The new description.</param>
+    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
+    /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
     public void UpdateItem(int id, string description)
     {
         var item = GetItemOrThrow(id);
@@ -37,6 +55,12 @@ public class TodoList : ITodoList
         item.UpdateDescription(description);
     }
 
+    /// <summary>
+    /// Removes a todo item from the list.
+    /// </summary>
+    /// <param name="id">The unique identifier of the item to remove.</param>
+    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
+    /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
     public void RemoveItem(int id)
     {
         var item = GetItemOrThrow(id);
@@ -49,6 +73,14 @@ public class TodoList : ITodoList
         _items.Remove(id);
     }
 
+    /// <summary>
+    /// Registers a progression entry for a todo item with validation.
+    /// </summary>
+    /// <param name="id">The unique identifier of the item.</param>
+    /// <param name="dateTime">The date of the progression.</param>
+    /// <param name="percent">The percentage of progress to add.</param>
+    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
+    /// <exception cref="InvalidProgressionException">Thrown when the progression is invalid.</exception>
     public void RegisterProgression(int id, DateTime dateTime, decimal percent)
     {
         var item = GetItemOrThrow(id);
@@ -76,6 +108,9 @@ public class TodoList : ITodoList
         item.AddProgression(dateTime, percent);
     }
 
+    /// <summary>
+    /// Prints all todo items to the console with their progression details.
+    /// </summary>
     public void PrintItems()
     {
         var sortedItems = _items.Values.OrderBy(i => i.Id).ToList();
@@ -135,7 +170,10 @@ public class TodoList : ITodoList
         }
     }
 
-    // Method to get all items for query purposes
+    /// <summary>
+    /// Gets all todo items sorted by ID.
+    /// </summary>
+    /// <returns>A read-only list of all todo items.</returns>
     public IReadOnlyList<TodoItem> GetAllItems()
     {
         return _items.Values.OrderBy(i => i.Id).ToList();
