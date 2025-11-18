@@ -1,12 +1,6 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
-using FluentValidation;
-using TodoListManager.Application.Handlers;
-using TodoListManager.Application.Services;
-using TodoListManager.Application.Validators;
-using TodoListManager.Domain.Aggregates;
-using TodoListManager.Domain.Repositories;
-using TodoListManager.Infrastructure.Repositories;
+using TodoListManager.API.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,27 +11,11 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Register FluentValidation validators
-builder.Services.AddValidatorsFromAssemblyContaining<AddTodoItemCommandValidator>();
-
-// Register repository as singleton (in-memory)
-builder.Services.AddSingleton<ITodoListRepository, InMemoryTodoListRepository>();
-
-// Register TodoList aggregate as singleton (in-memory state)
-builder.Services.AddSingleton<TodoList>();
-builder.Services.AddSingleton<ITodoList>(sp => sp.GetRequiredService<TodoList>());
-
-// Register command handlers
-builder.Services.AddScoped<AddTodoItemCommandHandler>();
-builder.Services.AddScoped<UpdateTodoItemCommandHandler>();
-builder.Services.AddScoped<RemoveTodoItemCommandHandler>();
-builder.Services.AddScoped<RegisterProgressionCommandHandler>();
-
-// Register query handlers
-builder.Services.AddScoped<GetAllTodoItemsQueryHandler>();
-
-// Register application service
-builder.Services.AddScoped<TodoListService>();
+// Register application services
+builder.Services.AddValidation();
+builder.Services.AddInfrastructure();
+builder.Services.AddDomain();
+builder.Services.AddApplication();
 
 var app = builder.Build();
 
