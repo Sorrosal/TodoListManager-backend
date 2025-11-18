@@ -2,6 +2,8 @@
 
 using TodoListManager.Application.Queries;
 using TodoListManager.Domain.Aggregates;
+using TodoListManager.Domain.Common;
+using TodoListManager.Domain.Exceptions;
 
 namespace TodoListManager.Application.Handlers;
 
@@ -14,9 +16,17 @@ public class GetAllTodoItemsQueryHandler
         _todoList = todoList;
     }
 
-    public GetAllTodoItemsQueryResult Handle(GetAllTodoItemsQuery query)
+    public Result<GetAllTodoItemsQueryResult> Handle(GetAllTodoItemsQuery query)
     {
-        var items = _todoList.GetAllItems().ToList();
-        return new GetAllTodoItemsQueryResult(items);
+        try
+        {
+            var items = _todoList.GetAllItems().ToList();
+            var result = new GetAllTodoItemsQueryResult(items);
+            return Result.Success(result);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure<GetAllTodoItemsQueryResult>(ex.Message);
+        }
     }
 }

@@ -2,6 +2,8 @@
 
 using TodoListManager.Application.Commands;
 using TodoListManager.Domain.Aggregates;
+using TodoListManager.Domain.Common;
+using TodoListManager.Domain.Exceptions;
 using TodoListManager.Domain.Repositories;
 
 namespace TodoListManager.Application.Handlers;
@@ -17,9 +19,21 @@ public class AddTodoItemCommandHandler
         _repository = repository;
     }
 
-    public void Handle(AddTodoItemCommand command)
+    public Result Handle(AddTodoItemCommand command)
     {
-        var id = _repository.GetNextId();
-        _todoList.AddItem(id, command.Title, command.Description, command.Category);
+        try
+        {
+            var id = _repository.GetNextId();
+            _todoList.AddItem(id, command.Title, command.Description, command.Category);
+            return Result.Success();
+        }
+        catch (InvalidCategoryException ex)
+        {
+            return Result.Failure(ex.Message);
+        }
+        catch (DomainException ex)
+        {
+            return Result.Failure(ex.Message);
+        }
     }
 }
