@@ -1,11 +1,5 @@
 # TodoListManager Backend API
 
-[![.NET 8](https://img.shields.io/badge/.NET-8.0-purple)](https://dotnet.microsoft.com/)
-[![C# 12](https://img.shields.io/badge/C%23-12.0-blue)](https://docs.microsoft.com/en-us/dotnet/csharp/)
-[![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-green)](docs/CLEAN_ARCHITECTURE.md)
-[![DDD](https://img.shields.io/badge/Design-DDD-orange)](docs/DDD.md)
-[![SOLID](https://img.shields.io/badge/Principles-SOLID-red)](docs/SOLID.md)
-
 A professionally architected .NET 8 Web API for managing todo lists with progression tracking, built using **Clean Architecture**, **Domain-Driven Design (DDD)**, and **SOLID principles**.
 
 ## 📋 Table of Contents
