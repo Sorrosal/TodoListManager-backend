@@ -1,7 +1,8 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
 using FluentValidation;
-using TodoListManager.Application.Handlers;
+using MediatR;
+using TodoListManager.Application.Behaviors;
 using TodoListManager.Application.Services;
 using TodoListManager.Application.Validators;
 using TodoListManager.Domain.Aggregates;
@@ -50,17 +51,16 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        // Register command handlers
-        services.AddScoped<AddTodoItemCommandHandler>();
-        services.AddScoped<UpdateTodoItemCommandHandler>();
-        services.AddScoped<RemoveTodoItemCommandHandler>();
-        services.AddScoped<RegisterProgressionCommandHandler>();
+        // Register MediatR
+        services.AddMediatR(cfg =>
+        {
+            cfg.RegisterServicesFromAssembly(typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly);
+        });
 
-        // Register query handlers
-        services.AddScoped<GetAllTodoItemsQueryHandler>();
+        // Register MediatR pipeline behaviors
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
         // Register application services
-        services.AddScoped<TodoListService>();
         services.AddScoped<TodoListPresentationService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
 

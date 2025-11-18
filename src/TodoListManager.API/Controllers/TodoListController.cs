@@ -1,8 +1,11 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
 using Asp.Versioning;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using TodoListManager.Application.Commands;
+using TodoListManager.Application.Queries;
 using TodoListManager.Application.Services;
 
 namespace TodoListManager.API.Controllers;
@@ -16,23 +19,27 @@ namespace TodoListManager.API.Controllers;
 [Authorize]
 public class TodoListController : ControllerBase
 {
-    private readonly TodoListService _todoListService;
+    private readonly IMediator _mediator;
+    private readonly TodoListPresentationService _presentationService;
 
-    public TodoListController(TodoListService todoListService)
+    public TodoListController(IMediator mediator, TodoListPresentationService presentationService)
     {
-        _todoListService = todoListService;
+        _mediator = mediator;
+        _presentationService = presentationService;
     }
 
     /// <summary>
     /// Adds a new todo item.
     /// </summary>
     /// <param name="request">The item details.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpPost("items")]
     [Authorize(Roles = "Admin,User")]
-    public IActionResult AddItem([FromBody] AddItemRequest request)
+    public async Task<IActionResult> AddItem([FromBody] AddItemRequest request, CancellationToken cancellationToken)
     {
-        var result = _todoListService.AddItem(request.Title, request.Description, request.Category);
+        var command = new AddTodoItemCommand(request.Title, request.Description, request.Category);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
@@ -45,12 +52,14 @@ public class TodoListController : ControllerBase
     /// </summary>
     /// <param name="id">The item ID.</param>
     /// <param name="request">The updated description.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpPut("items/{id}")]
     [Authorize(Roles = "Admin,User")]
-    public IActionResult UpdateItem(int id, [FromBody] UpdateItemRequest request)
+    public async Task<IActionResult> UpdateItem(int id, [FromBody] UpdateItemRequest request, CancellationToken cancellationToken)
     {
-        var result = _todoListService.UpdateItem(id, request.Description);
+        var command = new UpdateTodoItemCommand(id, request.Description);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
         {
@@ -67,12 +76,14 @@ public class TodoListController : ControllerBase
     /// Removes a todo item.
     /// </summary>
     /// <param name="id">The item ID to remove.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpDelete("items/{id}")]
     [Authorize(Roles = "Admin")]
-    public IActionResult RemoveItem(int id)
+    public async Task<IActionResult> RemoveItem(int id, CancellationToken cancellationToken)
     {
-        var result = _todoListService.RemoveItem(id);
+        var command = new RemoveTodoItemCommand(id);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
         {
@@ -90,12 +101,14 @@ public class TodoListController : ControllerBase
     /// </summary>
     /// <param name="id">The item ID.</param>
     /// <param name="request">The progression details.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpPost("items/{id}/progressions")]
     [Authorize(Roles = "Admin,User")]
-    public IActionResult RegisterProgression(int id, [FromBody] RegisterProgressionRequest request)
+    public async Task<IActionResult> RegisterProgression(int id, [FromBody] RegisterProgressionRequest request, CancellationToken cancellationToken)
     {
-        var result = _todoListService.RegisterProgression(id, request.Date, request.Percent);
+        var command = new RegisterProgressionCommand(id, request.Date, request.Percent);
+        var result = await _mediator.Send(command, cancellationToken);
         
         if (result.IsFailure)
         {
@@ -111,12 +124,14 @@ public class TodoListController : ControllerBase
     /// <summary>
     /// Gets all todo items.
     /// </summary>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A list of all todo items.</returns>
     [HttpGet("items")]
     [Authorize(Roles = "Admin,User")]
-    public IActionResult GetAllItems()
+    public async Task<IActionResult> GetAllItems(CancellationToken cancellationToken)
     {
-        var result = _todoListService.GetAllItems();
+        var query = new GetAllTodoItemsQuery();
+        var result = await _mediator.Send(query, cancellationToken);
         
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
@@ -132,7 +147,7 @@ public class TodoListController : ControllerBase
     [Authorize(Roles = "Admin")]
     public IActionResult PrintItems()
     {
-        _todoListService.PrintItems();
+        _presentationService.PrintItems();
         return Ok(new { message = "Items printed to console" });
     }
 }

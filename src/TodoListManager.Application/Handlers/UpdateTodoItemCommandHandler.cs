@@ -1,5 +1,6 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using MediatR;
 using TodoListManager.Application.Commands;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Common;
@@ -10,7 +11,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to update an existing todo item.
 /// </summary>
-public class UpdateTodoItemCommandHandler
+public class UpdateTodoItemCommandHandler : IRequestHandler<UpdateTodoItemCommand, Result>
 {
     private readonly ITodoList _todoList;
 
@@ -23,25 +24,26 @@ public class UpdateTodoItemCommandHandler
     /// Handles the update todo item command.
     /// </summary>
     /// <param name="command">The command containing the item ID and new description.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public Result Handle(UpdateTodoItemCommand command)
+    public Task<Result> Handle(UpdateTodoItemCommand command, CancellationToken cancellationToken)
     {
         try
         {
             _todoList.UpdateItem(command.Id, command.Description);
-            return Result.Success();
+            return Task.FromResult(Result.Success());
         }
         catch (TodoItemNotFoundException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
         catch (TodoItemCannotBeModifiedException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
         catch (DomainException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
     }
 }

@@ -1,5 +1,6 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using MediatR;
 using TodoListManager.Application.Commands;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Common;
@@ -10,7 +11,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to register a progression for a todo item.
 /// </summary>
-public class RegisterProgressionCommandHandler
+public class RegisterProgressionCommandHandler : IRequestHandler<RegisterProgressionCommand, Result>
 {
     private readonly ITodoList _todoList;
 
@@ -23,25 +24,26 @@ public class RegisterProgressionCommandHandler
     /// Handles the register progression command.
     /// </summary>
     /// <param name="command">The command containing progression details.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public Result Handle(RegisterProgressionCommand command)
+    public Task<Result> Handle(RegisterProgressionCommand command, CancellationToken cancellationToken)
     {
         try
         {
             _todoList.RegisterProgression(command.Id, command.Date, command.Percent);
-            return Result.Success();
+            return Task.FromResult(Result.Success());
         }
         catch (TodoItemNotFoundException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
         catch (InvalidProgressionException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
         catch (DomainException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
     }
 }

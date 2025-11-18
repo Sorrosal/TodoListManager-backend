@@ -1,5 +1,6 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using MediatR;
 using TodoListManager.Application.Commands;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Common;
@@ -10,7 +11,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to remove a todo item.
 /// </summary>
-public class RemoveTodoItemCommandHandler
+public class RemoveTodoItemCommandHandler : IRequestHandler<RemoveTodoItemCommand, Result>
 {
     private readonly ITodoList _todoList;
 
@@ -23,25 +24,26 @@ public class RemoveTodoItemCommandHandler
     /// Handles the remove todo item command.
     /// </summary>
     /// <param name="command">The command containing the item ID to remove.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A result indicating success or failure.</returns>
-    public Result Handle(RemoveTodoItemCommand command)
+    public Task<Result> Handle(RemoveTodoItemCommand command, CancellationToken cancellationToken)
     {
         try
         {
             _todoList.RemoveItem(command.Id);
-            return Result.Success();
+            return Task.FromResult(Result.Success());
         }
         catch (TodoItemNotFoundException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
         catch (TodoItemCannotBeModifiedException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
         catch (DomainException ex)
         {
-            return Result.Failure(ex.Message);
+            return Task.FromResult(Result.Failure(ex.Message));
         }
     }
 }
