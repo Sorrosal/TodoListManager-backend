@@ -6,10 +6,12 @@ A professionally architected .NET 8 Web API for managing todo lists with progres
 
 - [Features](#-features)
 - [Architecture](#-architecture)
+- [Testing](#-testing)
 - [Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
   - [Running the API](#running-the-api)
+  - [Running Tests](#running-tests)
   - [Default Credentials](#default-credentials)
 - [API Documentation](#-api-documentation)
 - [Project Structure](#-project-structure)
@@ -28,6 +30,8 @@ A professionally architected .NET 8 Web API for managing todo lists with progres
 - 🎯 **CQRS Pattern** implementation with MediatR
 - 🏗️ **Clean Architecture** with clear separation of concerns
 - 🔄 **Domain-Driven Design** with aggregates, entities, and value objects
+- 🎁 **Result Pattern** for explicit error handling and type-safe responses
+- 🧪 **Comprehensive Test Coverage** with unit tests and architecture tests
 
 ## 🏛️ Architecture
 
@@ -61,6 +65,71 @@ This project follows **Clean Architecture** principles with a clear separation o
 - **[Domain-Driven Design](docs/DDD.md)** - Aggregates, entities, value objects, and ubiquitous language
 - **[SOLID Principles](docs/SOLID.md)** - How each SOLID principle is applied with code examples
 - **[Setup Guide](docs/SETUP.md)** - Detailed installation and configuration instructions
+
+## 🧪 Testing
+
+This project implements a comprehensive testing strategy to ensure code quality, maintainability, and architectural integrity.
+
+### Test Projects
+
+The solution includes multiple test projects covering different aspects:
+
+#### 🔬 Unit Tests
+- **TodoListManager.Domain.Tests** - Domain layer unit tests
+  - Aggregate behavior validation
+  - Entity and value object tests
+  - Business rule enforcement
+  - Specification pattern tests
+
+- **TodoListManager.Application.Tests** - Application layer unit tests
+  - Command and query handler tests
+  - Validation logic tests
+  - Use case scenarios
+  - Service interaction tests
+
+- **TodoListManager.Infrastructure.Tests** - Infrastructure layer unit tests
+  - Repository implementation tests
+  - Service implementation tests
+  - JWT token generation and validation
+  - Password hashing verification
+
+#### 🏛️ Architecture Tests
+- **TodoListManager.ArchitectureTests** - Architectural rule enforcement
+  - Layer dependency validation (ensures dependency rules are not violated)
+  - Clean Architecture boundaries enforcement
+  - Naming convention validation
+  - Project reference verification
+  - Ensures Domain layer has no external dependencies
+
+### Running Tests
+
+Run all tests:
+```bash
+dotnet test
+```
+
+Run specific test project:
+```bash
+dotnet test tests/TodoListManager.Domain.Tests
+dotnet test tests/TodoListManager.Application.Tests
+dotnet test tests/TodoListManager.Infrastructure.Tests
+dotnet test tests/TodoListManager.ArchitectureTests
+```
+
+Run tests with coverage:
+```bash
+dotnet test --collect:"XPlat Code Coverage"
+```
+
+### Test Coverage
+The test suite covers:
+- ✅ Domain entities and aggregates
+- ✅ Value objects and specifications
+- ✅ Command and query handlers
+- ✅ Validation behaviors
+- ✅ Repository implementations
+- ✅ Authentication and authorization
+- ✅ Architectural boundaries
 
 ## 🚀 Getting Started
 
@@ -103,6 +172,24 @@ This project follows **Clean Architecture** principles with a clear separation o
 3. **Access the API**
    - API Base URL: `https://localhost:7xxx` (port will be shown in console)
    - Swagger UI: `https://localhost:7xxx/swagger`
+
+### Running Tests
+
+From the solution root directory:
+
+```bash
+# Run all tests
+dotnet test
+
+# Run with detailed output
+dotnet test --logger "console;verbosity=detailed"
+
+# Run only architecture tests
+dotnet test tests/TodoListManager.ArchitectureTests
+
+# Run with code coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
 
 ### Default Credentials
 
@@ -217,6 +304,12 @@ TodoListManager-backend/
 │       ├── Configuration/                # API Configuration (Swagger)
 │       └── Program.cs                    # Application Entry Point
 │
+├── tests/                                # Test Projects
+│   ├── TodoListManager.Domain.Tests/     # Domain layer unit tests
+│   ├── TodoListManager.Application.Tests/# Application layer unit tests
+│   ├── TodoListManager.Infrastructure.Tests/ # Infrastructure tests
+│   └── TodoListManager.ArchitectureTests/# Architecture rules tests
+│
 ├── docs/                                 # Documentation
 │   ├── CLEAN_ARCHITECTURE.md             # Clean Architecture details
 │   ├── DDD.md                            # Domain-Driven Design details
@@ -255,9 +348,56 @@ This project demonstrates professional software engineering practices:
 - **CQRS** (Command Query Responsibility Segregation) - Separate read and write operations
 - **Repository Pattern** - Abstraction over data access
 - **Specification Pattern** - Encapsulate business rules
+- **Result Pattern** - Explicit error handling without exceptions
 - **Factory Pattern** - Object creation (User.Create)
 - **Pipeline Pattern** - MediatR behaviors (ValidationBehavior)
 - **Strategy Pattern** - Authentication strategies
+
+### Result Pattern Implementation
+
+This project implements the **Result Pattern** for robust error handling:
+
+#### Benefits
+- **Type-Safe Error Handling** - Compile-time guarantees for error cases
+- **Explicit Success/Failure** - No hidden exceptions or null returns
+- **Rich Error Information** - Detailed error messages with context
+- **Railway-Oriented Programming** - Chain operations with automatic short-circuiting
+- **Improved Testability** - Easy to test success and failure paths
+
+#### Usage Examples
+
+**Command Handlers:**
+```csharp
+public async Task<Result<TodoItemDto>> Handle(CreateTodoItemCommand request, CancellationToken cancellationToken)
+{
+    // Validation failures return Result.Failure
+    if (validation.IsInvalid)
+        return Result.Failure<TodoItemDto>("Invalid input");
+    
+    // Business rule violations return Result.Failure
+    if (!businessRule.IsSatisfied)
+        return Result.Failure<TodoItemDto>("Business rule violated");
+    
+    // Success returns Result.Success with data
+    return Result.Success(todoItemDto);
+}
+```
+
+**API Controllers:**
+```csharp
+var result = await _mediator.Send(command);
+
+if (result.IsFailure)
+    return BadRequest(result.Error);
+
+return Ok(result.Value);
+```
+
+**Benefits in Practice:**
+- No try-catch blocks cluttering business logic
+- Clear separation between expected failures and exceptional cases
+- Self-documenting code (return type shows operation can fail)
+- Easier to compose operations and maintain control flow
 
 ## 🛠️ Technologies
 
@@ -273,6 +413,12 @@ This project demonstrates professional software engineering practices:
 - **Swashbuckle (Swagger)** - API documentation
 - **Asp.Versioning** - API versioning support
 
+### Testing Libraries
+- **xUnit** - Unit testing framework
+- **FluentAssertions** - Fluent assertion library for tests
+- **Moq** - Mocking framework for unit tests
+- **NetArchTest.Rules** - Architecture testing library
+
 ### Patterns & Practices
 - Clean Architecture
 - Domain-Driven Design (DDD)
@@ -280,6 +426,7 @@ This project demonstrates professional software engineering practices:
 - CQRS Pattern
 - Repository Pattern
 - Specification Pattern
+- Result Pattern
 
 ## 📝 Key Business Rules
 
