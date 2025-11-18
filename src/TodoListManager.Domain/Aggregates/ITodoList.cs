@@ -14,20 +14,20 @@ public interface ITodoList
     /// <param name="title">The title of the item.</param>
     /// <param name="description">The description of the item.</param>
     /// <param name="category">The category of the item.</param>
-    void AddItem(int id, string title, string description, string category);
+    public void AddItem(int id, string title, string description, string category);
 
     /// <summary>
     /// Updates the description of an existing todo item.
     /// </summary>
     /// <param name="id">The unique identifier of the item to update.</param>
     /// <param name="description">The new description.</param>
-    void UpdateItem(int id, string description);
+    public void UpdateItem(int id, string description);
 
     /// <summary>
     /// Removes a todo item from the list.
     /// </summary>
     /// <param name="id">The unique identifier of the item to remove.</param>
-    void RemoveItem(int id);
+    public void RemoveItem(int id);
 
     /// <summary>
     /// Registers a progression entry for a todo item.
@@ -35,10 +35,10 @@ public interface ITodoList
     /// <param name="id">The unique identifier of the item.</param>
     /// <param name="dateTime">The date of the progression.</param>
     /// <param name="percent">The percentage of progress to add.</param>
-    void RegisterProgression(int id, DateTime dateTime, decimal percent);
+    public void RegisterProgression(int id, DateTime dateTime, decimal percent);
 
     /// <summary>
     /// Prints all todo items to the console.
     /// </summary>
-    void PrintItems();
+    public void PrintItems();
 }

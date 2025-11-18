@@ -1,5 +1,6 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using TodoListManager.Application.Services;
 
@@ -9,7 +10,8 @@ namespace TodoListManager.API.Controllers;
 /// API controller for managing todo list items.
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
 public class TodoListController : ControllerBase
 {
     private readonly TodoListService _todoListService;
