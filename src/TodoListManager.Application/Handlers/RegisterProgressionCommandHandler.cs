@@ -2,9 +2,9 @@
 
 using MediatR;
 using TodoListManager.Application.Commands;
-using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Common;
 using TodoListManager.Domain.Exceptions;
+using TodoListManager.Domain.Repositories;
 
 namespace TodoListManager.Application.Handlers;
 
@@ -13,37 +13,45 @@ namespace TodoListManager.Application.Handlers;
 /// </summary>
 public class RegisterProgressionCommandHandler : IRequestHandler<RegisterProgressionCommand, Result>
 {
-    private readonly ITodoList _todoList;
+    private readonly ITodoListRepository _repository;
+    private readonly IUnitOfWork _unitOfWork;
 
-    public RegisterProgressionCommandHandler(ITodoList todoList)
+    public RegisterProgressionCommandHandler(ITodoListRepository repository, IUnitOfWork unitOfWork)
     {
-        _todoList = todoList;
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
     }
 
     /// <summary>
     /// Handles the register progression command.
     /// </summary>
-    /// <param name="command">The command containing progression details.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A result indicating success or failure.</returns>
-    public Task<Result> Handle(RegisterProgressionCommand command, CancellationToken cancellationToken)
+    public async Task<Result> Handle(RegisterProgressionCommand command, CancellationToken cancellationToken)
     {
         try
         {
-            _todoList.RegisterProgression(command.Id, command.Date, command.Percent);
-            return Task.FromResult(Result.Success());
+            var item = await _repository.GetByIdAsync(command.Id, cancellationToken);
+            if (item == null) return Result.Failure($"Item with id {command.Id} not found");
+
+            var aggregate = await _repository.GetAggregateAsync(cancellationToken);
+            aggregate.RegisterProgression(command.Id, command.Date, command.Percent);
+
+            var updated = aggregate.GetAllItems().First(i => i.Id == command.Id);
+            await _repository.SaveAsync(updated, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            return Result.Success();
         }
         catch (TodoItemNotFoundException ex)
         {
-            return Task.FromResult(Result.Failure(ex.Message));
+            return Result.Failure(ex.Message);
         }
         catch (InvalidProgressionException ex)
         {
-            return Task.FromResult(Result.Failure(ex.Message));
+            return Result.Failure(ex.Message);
         }
         catch (DomainException ex)
         {
-            return Task.FromResult(Result.Failure(ex.Message));
+            return Result.Failure(ex.Message);
         }
     }
 }
