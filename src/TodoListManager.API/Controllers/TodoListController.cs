@@ -1,12 +1,10 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
-using Asp.Versioning;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using TodoListManager.Application.Commands;
 using TodoListManager.Application.Queries;
-using TodoListManager.Application.Services;
 
 namespace TodoListManager.API.Controllers;
 
@@ -14,28 +12,32 @@ namespace TodoListManager.API.Controllers;
 /// API controller for managing todo list items.
 /// </summary>
 [ApiController]
-[ApiVersion("1.0")]
-[Route("api/v{version:apiVersion}/[controller]")]
+[Route("api/[controller]")]
 [Authorize]
 public class TodoListController : ControllerBase
 {
     private readonly IMediator _mediator;
-    private readonly TodoListPresentationService _presentationService;
 
-    public TodoListController(IMediator mediator, TodoListPresentationService presentationService)
+    /// <summary>
+    /// Initializes a new instance of <see cref="TodoListController"/>.
+    /// </summary>
+    /// <param name="mediator">The MediatR instance.</param>
+    /// <exception cref="ArgumentNullException">Thrown when mediator is null.</exception>
+    public TodoListController(IMediator mediator)
     {
-        _mediator = mediator;
-        _presentationService = presentationService;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
     }
 
     /// <summary>
     /// Adds a new todo item.
     /// </summary>
     /// <param name="request">The item details.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpPost("items")]
     [Authorize(Roles = "Admin,User")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> AddItem([FromBody] AddItemRequest request, CancellationToken cancellationToken)
     {
         var command = new AddTodoItemCommand(request.Title, request.Description, request.Category);
@@ -52,10 +54,13 @@ public class TodoListController : ControllerBase
     /// </summary>
     /// <param name="id">The item ID.</param>
     /// <param name="request">The updated description.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpPut("items/{id}")]
     [Authorize(Roles = "Admin,User")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateItem(int id, [FromBody] UpdateItemRequest request, CancellationToken cancellationToken)
     {
         var command = new UpdateTodoItemCommand(id, request.Description);
@@ -76,10 +81,13 @@ public class TodoListController : ControllerBase
     /// Removes a todo item.
     /// </summary>
     /// <param name="id">The item ID to remove.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpDelete("items/{id}")]
     [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RemoveItem(int id, CancellationToken cancellationToken)
     {
         var command = new RemoveTodoItemCommand(id);
@@ -101,10 +109,13 @@ public class TodoListController : ControllerBase
     /// </summary>
     /// <param name="id">The item ID.</param>
     /// <param name="request">The progression details.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>Success or error message.</returns>
     [HttpPost("items/{id}/progressions")]
     [Authorize(Roles = "Admin,User")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RegisterProgression(int id, [FromBody] RegisterProgressionRequest request, CancellationToken cancellationToken)
     {
         var command = new RegisterProgressionCommand(id, request.Date, request.Percent);
@@ -124,10 +135,12 @@ public class TodoListController : ControllerBase
     /// <summary>
     /// Gets all todo items.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A list of all todo items.</returns>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>A response containing all todo items as DTOs.</returns>
     [HttpGet("items")]
     [Authorize(Roles = "Admin,User")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAllItems(CancellationToken cancellationToken)
     {
         var query = new GetAllTodoItemsQuery();
@@ -136,33 +149,27 @@ public class TodoListController : ControllerBase
         if (result.IsFailure)
             return BadRequest(new { error = result.Error });
 
-        return Ok(result.Value.Items);
-    }
-
-    /// <summary>
-    /// Prints all todo items to the console (for debugging).
-    /// </summary>
-    /// <returns>Success message.</returns>
-    [HttpPost("items/print")]
-    [Authorize(Roles = "Admin")]
-    public IActionResult PrintItems()
-    {
-        _presentationService.PrintItems();
-        return Ok(new { message = "Items printed to console" });
+        return Ok(result.Value);
     }
 }
 
 /// <summary>
 /// Request model for adding a new todo item.
 /// </summary>
+/// <param name="Title">The title of the item.</param>
+/// <param name="Description">The description of the item.</param>
+/// <param name="Category">The category of the item.</param>
 public record AddItemRequest(string Title, string Description, string Category);
 
 /// <summary>
 /// Request model for updating a todo item.
 /// </summary>
+/// <param name="Description">The new description.</param>
 public record UpdateItemRequest(string Description);
 
 /// <summary>
 /// Request model for registering a progression.
 /// </summary>
+/// <param name="Date">The progression date.</param>
+/// <param name="Percent">The percentage of progress.</param>
 public record RegisterProgressionRequest(DateTime Date, decimal Percent);

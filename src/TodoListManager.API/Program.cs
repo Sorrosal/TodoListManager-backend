@@ -1,11 +1,12 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using Microsoft.AspNetCore.Identity;
 using TodoListManager.API.Extensions;
+using TodoListManager.Infrastructure.Data;
+using TodoListManager.Infrastructure.Identity;
+using TodoListManager.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container
-builder.Services.AddControllers();
 
 // Configure CORS
 builder.Services.AddCorsPolicy();
@@ -13,31 +14,35 @@ builder.Services.AddCorsPolicy();
 // Configure JWT Authentication
 builder.Services.AddJwtAuthentication(builder.Configuration);
 
-// Configure API Versioning
-builder.Services.AddApiVersioningConfiguration();
+// Register application layers
+builder.Services.AddValidation();
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddDomain();
+builder.Services.AddApplication();
 
 // Configure Swagger/OpenAPI
 builder.Services.AddSwaggerConfiguration();
 
-// Register application layers
-builder.Services.AddValidation();
-builder.Services.AddInfrastructure();
-builder.Services.AddDomain();
-builder.Services.AddApplication();
+// Add MVC Controllers
+builder.Services.AddControllers();
 
 var app = builder.Build();
+
+// Seed database
+await app.SeedDatabaseAsync();
 
 // Configure the HTTP request pipeline
 app.UseSwaggerConfiguration();
 
 app.UseHttpsRedirection();
 
-// Enable CORS - must be placed before Authentication and Authorization
 app.UseCors("AllowAll");
+
+app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.UseEndpoints(endpoints => endpoints.MapControllers());
 
 app.Run();

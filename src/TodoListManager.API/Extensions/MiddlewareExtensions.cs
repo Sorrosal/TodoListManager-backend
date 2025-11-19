@@ -1,7 +1,5 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
-using Asp.Versioning.ApiExplorer;
-
 namespace TodoListManager.API.Extensions;
 
 /// <summary>
@@ -23,15 +21,7 @@ public static class MiddlewareExtensions
             app.UseSwagger();
             app.UseSwaggerUI(options =>
             {
-                var provider = app.ApplicationServices.GetRequiredService<IApiVersionDescriptionProvider>();
-                
-                // Build a swagger endpoint for each discovered API version
-                foreach (var description in provider.ApiVersionDescriptions.OrderByDescending(x => x.ApiVersion))
-                {
-                    options.SwaggerEndpoint(
-                        $"/swagger/{description.GroupName}/swagger.json",
-                        description.GroupName.ToUpperInvariant());
-                }
+                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Todo List Manager API v1");
             });
         }
 
