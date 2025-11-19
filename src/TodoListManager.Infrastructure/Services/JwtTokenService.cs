@@ -3,11 +3,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using TodoListManager.Domain.Entities;
 using TodoListManager.Domain.Services;
 using TodoListManager.Infrastructure.Configuration;
+using TodoListManager.Infrastructure.Identity;
 
 namespace TodoListManager.Infrastructure.Services;
 
@@ -17,35 +18,39 @@ namespace TodoListManager.Infrastructure.Services;
 public class JwtTokenService : ITokenService
 {
     private readonly JwtSettings _jwtSettings;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public JwtTokenService(IOptions<JwtSettings> jwtSettings)
+    public JwtTokenService(IOptions<JwtSettings> jwtSettings, UserManager<ApplicationUser> userManager)
     {
         _jwtSettings = jwtSettings.Value;
+        _userManager = userManager ?? throw new ArgumentNullException(nameof(userManager));
     }
 
-    public string GenerateToken(User user)
+    public async Task<string> GenerateTokenAsync(object user)
     {
+        if (user is not ApplicationUser applicationUser)
+            throw new ArgumentException("User must be of type ApplicationUser", nameof(user));
+
         var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.Secret));
         var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
         var claims = new List<Claim>
         {
-            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new Claim(ClaimTypes.Name, user.Username),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new(ClaimTypes.NameIdentifier, applicationUser.Id.ToString()),
+            new(ClaimTypes.Name, applicationUser.UserName ?? string.Empty),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 
-        // Add roles as claims
-        foreach (var role in user.Roles)
+        var roles = await _userManager.GetRolesAsync(applicationUser);
+        foreach (var role in roles)
         {
-            claims.Add(new Claim(ClaimTypes.Role, role.Name));
+            claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        // Add permissions as claims
-        var permissions = user.Roles.SelectMany(r => r.Permissions).Distinct();
-        foreach (var permission in permissions)
+        var userClaims = await _userManager.GetClaimsAsync(applicationUser);
+        foreach (var claim in userClaims)
         {
-            claims.Add(new Claim("permission", permission.Name));
+            claims.Add(claim);
         }
 
         var token = new JwtSecurityToken(
