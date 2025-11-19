@@ -2,8 +2,64 @@
 
 A professionally architected .NET 8 Web API for managing todo lists with progression tracking, built using **Clean Architecture**, **Domain-Driven Design (DDD)**, and **SOLID principles**.
 
+## ⚡ Quick Start
+
+### 🔑 Default Admin Credentials
+
+The application comes pre-configured with an admin user:
+
+| Field    | Value   |
+|----------|---------|
+| **Username** | `admin` |
+| **Password** | `admin` |
+
+Use these credentials to login via `/api/v1/Auth/login` and get your JWT token.
+
+### 🗄️ Database Configuration
+
+**IMPORTANT**: Before running the application, configure your database connection string.
+
+Edit the file `src/TodoListManager.API/appsettings.Development.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=YOUR_SERVER;Database=TodoListDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+  }
+}
+```
+
+**Connection String Examples:**
+
+**SQL Server Express (Local):**
+```json
+"DefaultConnection": "Server=localhost\\SQLEXPRESS;Database=TodoListDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```
+
+**SQL Server with Username/Password:**
+```json
+"DefaultConnection": "Server=localhost;Database=TodoListDb;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```
+
+**SQL Server (Named Instance):**
+```json
+"DefaultConnection": "Server=localhost\\INSTANCE_NAME;Database=TodoListDb;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=true"
+```
+
+**Azure SQL Database:**
+```json
+"DefaultConnection": "Server=tcp:yourserver.database.windows.net,1433;Database=TodoListDb;User Id=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+```
+
+> 💡 **Tip**: The database will be created automatically on first run if it doesn't exist.
+
+---
+
 ## 📋 Table of Contents
 
+- [Quick Start](#-quick-start)
+  - [Default Admin Credentials](#-default-admin-credentials)
+  - [Database Configuration](#️-database-configuration)
 - [Features](#-features)
 - [Architecture](#-architecture)
 - [Testing](#-testing)
@@ -12,7 +68,6 @@ A professionally architected .NET 8 Web API for managing todo lists with progres
   - [Installation](#installation)
   - [Running the API](#running-the-api)
   - [Running Tests](#running-tests)
-  - [Default Credentials](#default-credentials)
 - [API Documentation](#-api-documentation)
 - [Project Structure](#-project-structure)
 - [Design Patterns & Principles](#-design-patterns--principles)
@@ -136,6 +191,7 @@ The test suite covers:
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later
+- SQL Server (Express, Developer, or Azure SQL Database)
 - Your favorite IDE ([Visual Studio 2022](https://visualstudio.microsoft.com/), [Rider](https://www.jetbrains.com/rider/), or [VS Code](https://code.visualstudio.com/))
 - [Git](https://git-scm.com/)
 
@@ -143,16 +199,20 @@ The test suite covers:
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/sergio-sorrosal_inetcat/TodoListManager-backend.git
+   git clone https://github.com/Sorrosal/TodoListManager-backend.git
    cd TodoListManager-backend
    ```
 
-2. **Restore dependencies**
+2. **Configure the database connection string**
+   
+   Edit `src/TodoListManager.API/appsettings.Development.json` and update the connection string to match your SQL Server instance (see [Database Configuration](#️-database-configuration) section above).
+
+3. **Restore dependencies**
    ```bash
    dotnet restore
    ```
 
-3. **Build the solution**
+4. **Build the solution**
    ```bash
    dotnet build
    ```
@@ -173,6 +233,11 @@ The test suite covers:
    - API Base URL: `https://localhost:7xxx` (port will be shown in console)
    - Swagger UI: `https://localhost:7xxx/swagger`
 
+4. **Login with default credentials**
+   - Use the admin credentials from the [Quick Start](#-quick-start) section
+   - Navigate to `/api/v1/Auth/login` in Swagger
+   - Get your JWT token and authorize
+
 ### Running Tests
 
 From the solution root directory:
@@ -191,39 +256,6 @@ dotnet test tests/TodoListManager.ArchitectureTests
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
-### Default Credentials
-
-The application is pre-configured with an **admin user** for testing:
-
-| Field    | Value   |
-|----------|---------|
-| Username | `admin` |
-| Password | `admin` |
-
-**Authentication Flow:**
-1. Navigate to Swagger UI: `https://localhost:7xxx/swagger`
-2. Use the `/api/v1/Auth/login` endpoint
-3. POST request body:
-   ```json
-   {
-     "username": "admin",
-     "password": "admin"
-   }
-   ```
-4. Copy the JWT token from the response
-5. Click **"Authorize"** button in Swagger
-6. Enter: `Bearer YOUR_TOKEN_HERE`
-7. Now you can access protected endpoints!
-
-**Admin Role Permissions:**
-- ✅ TodoListRead
-- ✅ TodoListCreate
-- ✅ TodoListUpdate
-- ✅ TodoListDelete
-- ✅ TodoListManage
-
-> 📖 For more detailed setup instructions, see [SETUP.md](docs/SETUP.md)
-
 ## 📖 API Documentation
 
 ### Available Endpoints
@@ -238,6 +270,25 @@ The application is pre-configured with an **admin user** for testing:
 - `PUT /api/v1/TodoList/{id}` - Update a todo item description
 - `DELETE /api/v1/TodoList/{id}` - Remove a todo item
 - `POST /api/v1/TodoList/{id}/progression` - Register progress for a todo item
+
+### Example Request: Login
+
+```bash
+curl -X POST "https://localhost:7xxx/api/v1/Auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin"
+  }'
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expiration": "2024-01-15T11:00:00Z"
+}
+```
 
 ### Example Request: Create Todo Item
 
@@ -407,6 +458,7 @@ return Ok(result.Value);
 
 ### Libraries & Packages
 - **ASP.NET Core 8** - Web API framework
+- **Entity Framework Core 8** - ORM for data access
 - **MediatR** - CQRS and mediator pattern implementation
 - **FluentValidation** - Fluent validation library
 - **JWT Bearer Authentication** - Token-based authentication
