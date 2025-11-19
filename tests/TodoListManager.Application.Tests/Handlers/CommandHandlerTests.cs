@@ -6,18 +6,23 @@ using TodoListManager.Application.Commands;
 using TodoListManager.Application.Handlers;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Exceptions;
+using TodoListManager.Domain.Repositories;
+using TodoListManager.Domain.Services;
+using TodoListManager.Domain.Entities;
 
 namespace TodoListManager.Application.Tests.Handlers;
 
 public class UpdateTodoItemCommandHandlerTests
 {
-    private readonly Mock<ITodoList> _mockTodoList;
+    private readonly Mock<ITodoListRepository> _mockRepository;
+    private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
     private readonly UpdateTodoItemCommandHandler _handler;
 
     public UpdateTodoItemCommandHandlerTests()
     {
-        _mockTodoList = new Mock<ITodoList>();
-        _handler = new UpdateTodoItemCommandHandler(_mockTodoList.Object);
+        _mockRepository = new Mock<ITodoListRepository>();
+        _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _handler = new UpdateTodoItemCommandHandler(_mockRepository.Object, _mockUnitOfWork.Object);
     }
 
     [Fact]
@@ -26,12 +31,26 @@ public class UpdateTodoItemCommandHandlerTests
         // Arrange
         var command = new UpdateTodoItemCommand(1, "Updated Description");
 
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        _mockTodoList.Verify(x => x.UpdateItem(1, "Updated Description"), Times.Once);
+        var updated = aggregate.GetAllItems().First(i => i.Id == 1);
+        updated.Description.Should().Be("Updated Description");
+        _mockRepository.Verify(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -39,15 +58,14 @@ public class UpdateTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new UpdateTodoItemCommand(999, "Description");
-        _mockTodoList.Setup(x => x.UpdateItem(999, It.IsAny<string>()))
-            .Throws(new TodoItemNotFoundException(999));
+        _mockRepository.Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((TodoItem?)null);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Contain("999");
+        result.Error.Should().Contain("not found");
     }
 
     [Fact]
@@ -55,8 +73,18 @@ public class UpdateTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new UpdateTodoItemCommand(1, "Description");
-        _mockTodoList.Setup(x => x.UpdateItem(1, It.IsAny<string>()))
-            .Throws(new TodoItemCannotBeModifiedException(1));
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        // add progression to exceed 50%
+        aggregate.RegisterProgression(1, DateTime.UtcNow.AddDays(-1), 60m);
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -70,8 +98,17 @@ public class UpdateTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new UpdateTodoItemCommand(1, "Description");
-        _mockTodoList.Setup(x => x.UpdateItem(It.IsAny<int>(), It.IsAny<string>()))
-            .Throws(new DomainException("Domain error"));
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Throws(new DomainException("Domain error"));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -84,13 +121,15 @@ public class UpdateTodoItemCommandHandlerTests
 
 public class RemoveTodoItemCommandHandlerTests
 {
-    private readonly Mock<ITodoList> _mockTodoList;
+    private readonly Mock<ITodoListRepository> _mockRepository;
+    private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
     private readonly RemoveTodoItemCommandHandler _handler;
 
     public RemoveTodoItemCommandHandlerTests()
     {
-        _mockTodoList = new Mock<ITodoList>();
-        _handler = new RemoveTodoItemCommandHandler(_mockTodoList.Object);
+        _mockRepository = new Mock<ITodoListRepository>();
+        _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _handler = new RemoveTodoItemCommandHandler(_mockRepository.Object, _mockUnitOfWork.Object);
     }
 
     [Fact]
@@ -99,12 +138,23 @@ public class RemoveTodoItemCommandHandlerTests
         // Arrange
         var command = new RemoveTodoItemCommand(1);
 
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.DeleteAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        _mockTodoList.Verify(x => x.RemoveItem(1), Times.Once);
+        _mockRepository.Verify(r => r.DeleteAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -112,8 +162,13 @@ public class RemoveTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new RemoveTodoItemCommand(999);
-        _mockTodoList.Setup(x => x.RemoveItem(999))
-            .Throws(new TodoItemNotFoundException(999));
+        
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((TodoItem?)null);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -127,8 +182,16 @@ public class RemoveTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new RemoveTodoItemCommand(1);
-        _mockTodoList.Setup(x => x.RemoveItem(1))
-            .Throws(new TodoItemCannotBeModifiedException(1));
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        aggregate.RegisterProgression(1, DateTime.UtcNow.AddDays(-1), 60m);
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -140,13 +203,15 @@ public class RemoveTodoItemCommandHandlerTests
 
 public class RegisterProgressionCommandHandlerTests
 {
-    private readonly Mock<ITodoList> _mockTodoList;
+    private readonly Mock<ITodoListRepository> _mockRepository;
+    private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
     private readonly RegisterProgressionCommandHandler _handler;
 
     public RegisterProgressionCommandHandlerTests()
     {
-        _mockTodoList = new Mock<ITodoList>();
-        _handler = new RegisterProgressionCommandHandler(_mockTodoList.Object);
+        _mockRepository = new Mock<ITodoListRepository>();
+        _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _handler = new RegisterProgressionCommandHandler(_mockRepository.Object, _mockUnitOfWork.Object);
     }
 
     [Fact]
@@ -156,12 +221,25 @@ public class RegisterProgressionCommandHandlerTests
         var date = DateTime.Now;
         var command = new RegisterProgressionCommand(1, date, 25m);
 
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        _mockTodoList.Verify(x => x.RegisterProgression(1, date, 25m), Times.Once);
+        var updated = aggregate.GetAllItems().First(i => i.Id == 1);
+        updated.Progressions.Should().HaveCount(1);
+        _mockRepository.Verify(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -169,8 +247,7 @@ public class RegisterProgressionCommandHandlerTests
     {
         // Arrange
         var command = new RegisterProgressionCommand(999, DateTime.Now, 25m);
-        _mockTodoList.Setup(x => x.RegisterProgression(999, It.IsAny<DateTime>(), It.IsAny<decimal>()))
-            .Throws(new TodoItemNotFoundException(999));
+        _mockRepository.Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>())).ReturnsAsync((TodoItem?)null);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -184,8 +261,15 @@ public class RegisterProgressionCommandHandlerTests
     {
         // Arrange
         var command = new RegisterProgressionCommand(1, DateTime.Now, 150m);
-        _mockTodoList.Setup(x => x.RegisterProgression(It.IsAny<int>(), It.IsAny<DateTime>(), It.IsAny<decimal>()))
-            .Throws(new InvalidProgressionException("Invalid"));
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        aggregate.AddItem(1, "Title", "Desc", "Work");
+        var item = aggregate.GetAllItems().First(i => i.Id == 1);
+
+        _mockRepository.Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>())).ReturnsAsync(item);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);

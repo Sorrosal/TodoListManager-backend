@@ -1,8 +1,6 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
 using FluentAssertions;
-using Moq;
-using TodoListManager.Domain.Repositories;
 using TodoListManager.Infrastructure.Services;
 
 namespace TodoListManager.Infrastructure.Tests.Services;
@@ -12,38 +10,18 @@ namespace TodoListManager.Infrastructure.Tests.Services;
 /// </summary>
 public class CategoryValidatorTests
 {
-    private readonly Mock<ITodoListRepository> _mockRepository;
     private readonly CategoryValidator _validator;
 
     public CategoryValidatorTests()
     {
-        _mockRepository = new Mock<ITodoListRepository>();
-        _validator = new CategoryValidator(_mockRepository.Object);
+        _validator = new CategoryValidator();
     }
-
-    #region Constructor Tests
-
-    [Fact]
-    public void Constructor_WithNullRepository_ShouldThrowArgumentNullException()
-    {
-        // Act
-        Action act = () => new CategoryValidator(null!);
-
-        // Assert
-        act.Should().Throw<ArgumentNullException>();
-    }
-
-    #endregion
 
     #region IsValidCategory Tests
 
     [Fact]
     public void IsValidCategory_WithValidCategory_ShouldReturnTrue()
     {
-        // Arrange
-        var validCategories = new List<string> { "Work", "Personal", "Health" };
-        _mockRepository.Setup(x => x.GetAllCategories()).Returns(validCategories);
-
         // Act
         var result = _validator.IsValidCategory("Work");
 
@@ -54,23 +32,17 @@ public class CategoryValidatorTests
     [Fact]
     public void IsValidCategory_ShouldBeCaseInsensitive()
     {
-        // Arrange
-        var validCategories = new List<string> { "Work" };
-        _mockRepository.Setup(x => x.GetAllCategories()).Returns(validCategories);
-
         // Act & Assert
         _validator.IsValidCategory("work").Should().BeTrue();
         _validator.IsValidCategory("WORK").Should().BeTrue();
         _validator.IsValidCategory("WoRk").Should().BeTrue();
+        _validator.IsValidCategory("personal").Should().BeTrue();
+        _validator.IsValidCategory("PERSONAL").Should().BeTrue();
     }
 
     [Fact]
     public void IsValidCategory_WithInvalidCategory_ShouldReturnFalse()
     {
-        // Arrange
-        var validCategories = new List<string> { "Work", "Personal" };
-        _mockRepository.Setup(x => x.GetAllCategories()).Returns(validCategories);
-
         // Act
         var result = _validator.IsValidCategory("InvalidCategory");
 
@@ -91,6 +63,22 @@ public class CategoryValidatorTests
         result.Should().BeFalse();
     }
 
+    [Theory]
+    [InlineData("Work")]
+    [InlineData("Personal")]
+    [InlineData("Education")]
+    [InlineData("Health")]
+    [InlineData("Finance")]
+    [InlineData("Other")]
+    public void IsValidCategory_WithAllValidCategories_ShouldReturnTrue(string category)
+    {
+        // Act
+        var result = _validator.IsValidCategory(category);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
     #endregion
 
     #region GetValidCategories Tests
@@ -99,8 +87,7 @@ public class CategoryValidatorTests
     public void GetValidCategories_ShouldReturnAllCategories()
     {
         // Arrange
-        var expectedCategories = new List<string> { "Work", "Personal", "Health" };
-        _mockRepository.Setup(x => x.GetAllCategories()).Returns(expectedCategories);
+        var expectedCategories = new[] { "Work", "Personal", "Education", "Health", "Finance", "Other" };
 
         // Act
         var result = _validator.GetValidCategories();
@@ -112,14 +99,22 @@ public class CategoryValidatorTests
     [Fact]
     public void GetValidCategories_ShouldReturnReadOnlyCollection()
     {
-        // Arrange
-        _mockRepository.Setup(x => x.GetAllCategories()).Returns(new List<string> { "Work" });
-
         // Act
         var result = _validator.GetValidCategories();
 
         // Assert
         result.Should().BeAssignableTo<IReadOnlyCollection<string>>();
+    }
+
+    [Fact]
+    public void GetValidCategories_ShouldReturnSameInstanceEachTime()
+    {
+        // Act
+        var result1 = _validator.GetValidCategories();
+        var result2 = _validator.GetValidCategories();
+
+        // Assert
+        result1.Should().BeEquivalentTo(result2);
     }
 
     #endregion

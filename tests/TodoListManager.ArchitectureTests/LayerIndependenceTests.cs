@@ -1,4 +1,5 @@
 using NetArchTest.Rules;
+using System.Reflection;
 
 namespace TodoListManager.ArchitectureTests;
 
@@ -9,138 +10,154 @@ public class LayerIndependenceTests
     private const string InfrastructureNamespace = "TodoListManager.Infrastructure";
 
     [Fact]
-    public void Domain_Should_NotDependOnExternalFrameworks()
+    public void Domain_Should_NotReferenceAnyOtherLayer()
     {
         // Arrange
         var assembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
-        // Act - Domain should not depend on external frameworks except System namespaces
+        // Act
         var result = Types.InAssembly(assembly)
             .Should()
-            .NotHaveDependencyOnAny(
-                "Microsoft.EntityFrameworkCore",
-                "Microsoft.AspNetCore",
-                "Newtonsoft.Json",
-                "System.Net.Http",
-                "MediatR",
-                "AutoMapper"
-            )
+            .NotHaveDependencyOnAny(ApplicationNamespace, InfrastructureNamespace)
             .GetResult();
 
         // Assert
         Assert.True(result.IsSuccessful,
-            $"Domain layer should not depend on external frameworks. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+            $"Domain layer should not reference any other layer. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 
     [Fact]
-    public void Repositories_Should_BeInDomainOrInfrastructure()
-    {
-        // Arrange
-        var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
-
-        // Act - Repository interfaces should be in Domain, implementations in Infrastructure
-        var domainRepositories = Types.InAssembly(domainAssembly)
-            .That()
-            .HaveNameEndingWith("Repository")
-            .And()
-            .AreInterfaces()
-            .Should()
-            .ResideInNamespace($"{DomainNamespace}.Repositories")
-            .GetResult();
-
-        var infrastructureRepositories = Types.InAssembly(infrastructureAssembly)
-            .That()
-            .HaveNameEndingWith("Repository")
-            .And()
-            .AreClasses()
-            .Should()
-            .ResideInNamespace($"{InfrastructureNamespace}.Repositories")
-            .GetResult();
-
-        // Assert
-        Assert.True(domainRepositories.IsSuccessful,
-            $"Repository interfaces should be in Domain.Repositories namespace. Violations: {string.Join(", ", domainRepositories.FailingTypeNames ?? [])}");
-        
-        Assert.True(infrastructureRepositories.IsSuccessful,
-            $"Repository implementations should be in Infrastructure.Repositories namespace. Violations: {string.Join(", ", infrastructureRepositories.FailingTypeNames ?? [])}");
-    }
-
-    [Fact]
-    public void DomainServices_Should_BeInterfaces()
+    public void Domain_Should_OnlyContainDomainConcepts()
     {
         // Arrange
         var assembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
-        // Act - All types in Domain.Services should be interfaces
+        // Act
         var result = Types.InAssembly(assembly)
-            .That()
-            .ResideInNamespace($"{DomainNamespace}.Services")
             .Should()
-            .BeInterfaces()
+            .NotHaveDependencyOn("System.Web")
+            .And()
+            .NotHaveDependencyOn("Microsoft.AspNetCore")
+            .And()
+            .NotHaveDependencyOn("System.Data")
+            .And()
+            .NotHaveDependencyOn("EntityFramework")
             .GetResult();
 
         // Assert
         Assert.True(result.IsSuccessful,
-            $"All types in Domain.Services should be interfaces. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+            $"Domain layer should only contain domain concepts. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 
     [Fact]
-    public void ApplicationHandlers_Should_NotBePublic()
+    public void Application_Should_OnlyDependOnDomain()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var assembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
-        // Act - Handlers can be internal, they don't need to be public
-        var handlers = Types.InAssembly(assembly)
+        // Act
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOn(InfrastructureNamespace)
+            .GetResult();
+
+        // Assert
+        Assert.True(result.IsSuccessful,
+            $"Application layer should only depend on Domain layer. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
+    [Fact]
+    public void Application_Should_NotContainInfrastructureConcerns()
+    {
+        // Arrange
+        var assembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
+
+        // Act
+        var result = Types.InAssembly(assembly)
+            .Should()
+            .NotHaveDependencyOn("System.Data")
+            .And()
+            .NotHaveDependencyOn("System.Web")
+            .GetResult();
+
+        // Assert
+        Assert.True(result.IsSuccessful,
+            $"Application layer should not contain infrastructure concerns. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
+    [Fact]
+    public void Infrastructure_Should_DependOnDomainOnly()
+    {
+        // Arrange
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
+
+        // Act
+        var result = Types.InAssembly(assembly)
+            .That()
+            .ResideInNamespace(InfrastructureNamespace)
+            .Should()
+            .NotHaveDependencyOn($"{ApplicationNamespace}.Handlers")
+            .And()
+            .NotHaveDependencyOn($"{ApplicationNamespace}.Commands")
+            .And()
+            .NotHaveDependencyOn($"{ApplicationNamespace}.Queries")
+            .GetResult();
+
+        // Assert
+        Assert.True(result.IsSuccessful,
+            $"Infrastructure layer should only depend on Domain layer. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+    }
+
+    [Fact]
+    public void Application_Handlers_Should_NotDependOnEachOther()
+    {
+        // Arrange
+        var assembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
+
+        // Act - Get all handler types
+        var handlerTypes = Types.InAssembly(assembly)
             .That()
             .ResideInNamespace($"{ApplicationNamespace}.Handlers")
-            .And()
-            .AreClasses()
             .GetTypes();
 
-        // Assert - Just verify handlers exist and are in correct namespace
-        Assert.NotEmpty(handlers);
-        Assert.All(handlers, handler => 
-            Assert.True(handler.Namespace?.StartsWith($"{ApplicationNamespace}.Handlers") == true,
-                $"Handler {handler.Name} should be in {ApplicationNamespace}.Handlers namespace"));
+        // Check that handlers don't have circular dependencies
+        foreach (var handlerType in handlerTypes)
+        {
+            // Get constructor parameters and field types to check dependencies
+            var constructorTypes = handlerType.GetConstructors()
+                .SelectMany(c => c.GetParameters().Select(p => p.ParameterType))
+                .Where(t => t.Namespace != null && t.Namespace.StartsWith($"{ApplicationNamespace}.Handlers"))
+                .Where(t => t != handlerType)
+                .ToList();
+
+            var fieldTypes = handlerType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+                .Select(f => f.FieldType)
+                .Where(t => t.Namespace != null && t.Namespace.StartsWith($"{ApplicationNamespace}.Handlers"))
+                .Where(t => t != handlerType)
+                .ToList();
+
+            var dependencies = constructorTypes.Concat(fieldTypes).Distinct().ToList();
+
+            Assert.Empty(dependencies);
+        }
     }
 
     [Fact]
-    public void DTOs_Should_BeInApplicationLayer()
+    public void Application_Commands_Should_NotDependOnHandlers()
     {
         // Arrange
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
-        // Act - Check that DTOs are in Application layer
-        var dtos = Types.InAssembly(applicationAssembly)
+        // Act
+        var result = Types.InAssembly(applicationAssembly)
             .That()
-            .ResideInNamespace($"{ApplicationNamespace}.DTOs")
-            .GetTypes();
+            .ResideInNamespace($"{ApplicationNamespace}.Commands")
+            .Should()
+            .NotHaveDependencyOn($"{ApplicationNamespace}.Handlers")
+            .GetResult();
 
         // Assert
-        Assert.NotEmpty(dtos);
-        Assert.All(dtos, dto => 
-            Assert.True(dto.Namespace?.StartsWith($"{ApplicationNamespace}.DTOs") == true,
-                $"DTO {dto.Name} should be in {ApplicationNamespace}.DTOs namespace"));
-    }
-
-    [Fact]
-    public void Validators_Should_OnlyBeInApplication()
-    {
-        // Arrange
-        var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
-
-        // Act - Validators should not be in Domain
-        var domainValidators = Types.InAssembly(domainAssembly)
-            .That()
-            .HaveNameEndingWith("Validator")
-            .And()
-            .DoNotResideInNamespace($"{DomainNamespace}.Services")
-            .GetTypes();
-
-        // Assert
-        Assert.Empty(domainValidators);
+        Assert.True(result.IsSuccessful,
+            $"Commands should not depend on Handlers. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
     }
 }

@@ -13,8 +13,8 @@ public class NamingConventionTests
     {
         // Arrange
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act & Assert
         var domainResult = Types.InAssembly(domainAssembly)
@@ -71,29 +71,33 @@ public class NamingConventionTests
     public void Repositories_Should_HaveRepositorySuffix()
     {
         // Arrange
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act
-        var result = Types.InAssembly(infrastructureAssembly)
+        var repositories = Types.InAssembly(infrastructureAssembly)
             .That()
             .ResideInNamespace($"{InfrastructureNamespace}.Repositories")
             .And()
             .AreClasses()
-            .Should()
-            .HaveNameEndingWith("Repository")
-            .GetResult();
+            .GetTypes();
 
-        // Assert
-        Assert.True(result.IsSuccessful, 
-            $"Repository classes should end with 'Repository'. Violations: {string.Join(", ", result.FailingTypeNames ?? [])}");
+        // Assert - Check that all repository names end with "Repository"
+        // Handle generic types by removing the generic type parameter notation (e.g., `1)
+        var violations = repositories
+            .Where(t => !t.Name.Split('`')[0].EndsWith("Repository"))
+            .Select(t => t.FullName)
+            .ToList();
+
+        Assert.True(violations.Count == 0, 
+            $"Repository classes should end with 'Repository'. Violations: {string.Join(", ", violations)}");
     }
 
     [Fact]
     public void Services_Should_HaveServiceSuffix()
     {
         // Arrange
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act & Assert
         var applicationResult = Types.InAssembly(applicationAssembly)
@@ -119,8 +123,6 @@ public class NamingConventionTests
             .HaveNameEndingWith("Service")
             .Or()
             .HaveNameEndingWith("Validator")
-            .Or()
-            .HaveNameEndingWith("Hasher")
             .GetResult();
 
         Assert.True(infrastructureResult.IsSuccessful, 
@@ -131,7 +133,7 @@ public class NamingConventionTests
     public void Validators_Should_HaveValidatorSuffix()
     {
         // Arrange
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
         // Act
         var result = Types.InAssembly(applicationAssembly)
@@ -152,7 +154,7 @@ public class NamingConventionTests
     public void CommandHandlers_Should_HaveCommandHandlerSuffix()
     {
         // Arrange
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
         // Act
         var result = Types.InAssembly(applicationAssembly)
@@ -175,7 +177,7 @@ public class NamingConventionTests
     public void QueryHandlers_Should_HaveQueryHandlerSuffix()
     {
         // Arrange
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
         // Act
         var result = Types.InAssembly(applicationAssembly)

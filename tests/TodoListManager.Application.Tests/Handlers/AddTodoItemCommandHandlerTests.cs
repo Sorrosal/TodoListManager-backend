@@ -7,23 +7,26 @@ using TodoListManager.Application.Handlers;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Exceptions;
 using TodoListManager.Domain.Repositories;
+using TodoListManager.Domain.Services;
+using TodoListManager.Domain.Entities;
 
 namespace TodoListManager.Application.Tests.Handlers;
 
 /// <summary>
 /// Unit tests for AddTodoItemCommandHandler following best practices.
+/// Updated to use repository + unit of work.
 /// </summary>
 public class AddTodoItemCommandHandlerTests
 {
-    private readonly Mock<ITodoList> _mockTodoList;
     private readonly Mock<ITodoListRepository> _mockRepository;
+    private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
     private readonly AddTodoItemCommandHandler _handler;
 
     public AddTodoItemCommandHandlerTests()
     {
-        _mockTodoList = new Mock<ITodoList>();
         _mockRepository = new Mock<ITodoListRepository>();
-        _handler = new AddTodoItemCommandHandler(_mockTodoList.Object, _mockRepository.Object);
+        _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _handler = new AddTodoItemCommandHandler(_mockRepository.Object, _mockUnitOfWork.Object);
     }
 
     #region Constructor Tests
@@ -32,7 +35,7 @@ public class AddTodoItemCommandHandlerTests
     public void Constructor_WithValidDependencies_ShouldCreateInstance()
     {
         // Act
-        var handler = new AddTodoItemCommandHandler(_mockTodoList.Object, _mockRepository.Object);
+        var handler = new AddTodoItemCommandHandler(_mockRepository.Object, _mockUnitOfWork.Object);
 
         // Assert
         handler.Should().NotBeNull();
@@ -47,56 +50,82 @@ public class AddTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new AddTodoItemCommand("Test Task", "Description", "Work");
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        _mockRepository.Verify(x => x.GetNextId(), Times.Once);
-        _mockTodoList.Verify(x => x.AddItem(1, "Test Task", "Description", "Work"), Times.Once);
+        _mockRepository.Verify(x => x.GetAggregateAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(x => x.SaveAsync(It.Is<TodoItem>(i => i.Id == 0 && i.Title == "Test Task"), It.IsAny<CancellationToken>()), Times.Once);
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_ShouldCallRepositoryBeforeAddingItem()
+    public async Task Handle_ShouldCallRepositoryInCorrectOrder()
     {
         // Arrange
-        var command = new AddTodoItemCommand("Task", "Desc", "Category");
+        var command = new AddTodoItemCommand("Task", "Desc", "Work");
         var callOrder = new List<string>();
 
-        _mockRepository.Setup(x => x.GetNextId())
-            .Returns(5)
-            .Callback(() => callOrder.Add("GetNextId"));
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(aggregate)
+            .Callback(() => callOrder.Add("GetAggregate"));
 
-        _mockTodoList.Setup(x => x.AddItem(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Callback(() => callOrder.Add("AddItem"));
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("Save"))
+            .Returns(Task.CompletedTask);
+
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .Callback(() => callOrder.Add("SaveChanges"))
+            .ReturnsAsync(1);
 
         // Act
         await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
-        callOrder.Should().ContainInOrder("GetNextId", "AddItem");
+        // Assert order
+        callOrder.Should().ContainInOrder("GetAggregate", "Save", "SaveChanges");
     }
 
     [Fact]
-    public async Task Handle_WithMultipleCommands_ShouldUseCorrectIds()
+    public async Task Handle_WithMultipleCommands_ShouldCreateMultipleItems()
     {
         // Arrange
         var command1 = new AddTodoItemCommand("Task 1", "Desc 1", "Work");
         var command2 = new AddTodoItemCommand("Task 2", "Desc 2", "Personal");
 
-        _mockRepository.SetupSequence(x => x.GetNextId())
-            .Returns(1)
-            .Returns(2);
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+
+        var aggregate1 = new TodoList(categoryValidator.Object);
+        var aggregate2 = new TodoList(categoryValidator.Object);
+
+        _mockRepository.SetupSequence(r => r.GetAggregateAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(aggregate1)
+            .ReturnsAsync(aggregate2);
+
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         await _handler.Handle(command1, CancellationToken.None);
         await _handler.Handle(command2, CancellationToken.None);
 
-        // Assert
-        _mockTodoList.Verify(x => x.AddItem(1, "Task 1", "Desc 1", "Work"), Times.Once);
-        _mockTodoList.Verify(x => x.AddItem(2, "Task 2", "Desc 2", "Personal"), Times.Once);
+        // Assert - both items should be created with temporary ID 0
+        _mockRepository.Verify(x => x.SaveAsync(It.Is<TodoItem>(i => i.Id == 0 && i.Title == "Task 1"), It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(x => x.SaveAsync(It.Is<TodoItem>(i => i.Id == 0 && i.Title == "Task 2"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion
@@ -108,9 +137,11 @@ public class AddTodoItemCommandHandlerTests
     {
         // Arrange
         var command = new AddTodoItemCommand("Task", "Description", "InvalidCategory");
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
-        _mockTodoList.Setup(x => x.AddItem(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), "InvalidCategory"))
-            .Throws(new InvalidCategoryException("InvalidCategory"));
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory("InvalidCategory")).Returns(false);
+        var aggregate = new TodoList(categoryValidator.Object);
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -121,37 +152,42 @@ public class AddTodoItemCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenAddItemThrowsDomainException_ShouldReturnFailure()
+    public async Task Handle_WhenSaveThrowsDomainException_ShouldReturnFailure()
     {
         // Arrange
         var command = new AddTodoItemCommand("Task", "Description", "Work");
-        var errorMessage = "Domain error occurred";
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
-        _mockTodoList.Setup(x => x.AddItem(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Throws(new DomainException(errorMessage));
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>()))
+            .Throws(new DomainException("Domain error occurred"));
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Error.Should().Be(errorMessage);
+        result.Error.Should().Be("Domain error occurred");
     }
 
     [Fact]
-    public async Task Handle_WhenExceptionOccurs_ShouldNotPropagateUnhandledException()
+    public async Task Handle_WhenGetAggregateThrowsException_ShouldThrow()
     {
         // Arrange
         var command = new AddTodoItemCommand("Task", "Description", "Work");
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
-        _mockTodoList.Setup(x => x.AddItem(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()))
-            .Throws(new InvalidCategoryException("test"));
+
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("Database error"));
 
         // Act
         Func<Task> act = async () => await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await act.Should().NotThrowAsync();
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Database error");
     }
 
     #endregion
@@ -159,11 +195,19 @@ public class AddTodoItemCommandHandlerTests
     #region CancellationToken Tests
 
     [Fact]
-    public async Task Handle_WithCancellationToken_ShouldComplete()
+    public async Task Handle_WithCancellationToken_ShouldPassItThrough()
     {
         // Arrange
         var command = new AddTodoItemCommand("Task", "Description", "Work");
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
         var cts = new CancellationTokenSource();
 
         // Act
@@ -171,6 +215,9 @@ public class AddTodoItemCommandHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        _mockRepository.Verify(r => r.GetAggregateAsync(cts.Token), Times.Once);
+        _mockRepository.Verify(r => r.SaveAsync(It.IsAny<TodoItem>(), cts.Token), Times.Once);
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(cts.Token), Times.Once);
     }
 
     #endregion
@@ -178,40 +225,51 @@ public class AddTodoItemCommandHandlerTests
     #region Edge Cases
 
     [Fact]
-    public async Task Handle_WithEmptyStrings_ShouldStillCallAddItem()
+    public async Task Handle_WithEmptyStrings_ShouldStillCallSave()
     {
         // Arrange
-        var command = new AddTodoItemCommand("", "", "");
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
+        var command = new AddTodoItemCommand("", "", "Work");
+        
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        _mockTodoList.Verify(x => x.AddItem(1, "", "", ""), Times.Once);
+        _mockRepository.Verify(x => x.SaveAsync(It.Is<TodoItem>(i => i.Id == 0), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_WithSpecialCharacters_ShouldPassThrough()
+    public async Task Handle_WithLongStrings_ShouldHandleCorrectly()
     {
         // Arrange
-        var command = new AddTodoItemCommand(
-            "Task with !@#$%",
-            "Description with <html>",
-            "Work & Life"
-        );
-        _mockRepository.Setup(x => x.GetNextId()).Returns(1);
+        var longTitle = new string('A', 1000);
+        var longDescription = new string('B', 5000);
+        var command = new AddTodoItemCommand(longTitle, longDescription, "Work");
+        
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        _mockTodoList.Verify(x => x.AddItem(
-            1,
-            "Task with !@#$%",
-            "Description with <html>",
-            "Work & Life"
-        ), Times.Once);
+        result.IsSuccess.Should().BeTrue();
+        _mockRepository.Verify(x => x.SaveAsync(
+            It.Is<TodoItem>(i => i.Title == longTitle && i.Description == longDescription), 
+            It.IsAny<CancellationToken>()), 
+            Times.Once);
     }
 
     #endregion
@@ -227,15 +285,14 @@ public class AddTodoItemCommandHandlerTests
             "Write comprehensive documentation for the project",
             "Work"
         );
-        var nextId = 42;
 
-        _mockRepository.Setup(x => x.GetNextId()).Returns(nextId);
-        _mockTodoList.Setup(x => x.AddItem(
-            nextId,
-            command.Title,
-            command.Description,
-            command.Category
-        ));
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory("Work")).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -245,18 +302,43 @@ public class AddTodoItemCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Error.Should().BeEmpty();
 
-        // Verify all interactions in correct order
-        _mockRepository.Verify(x => x.GetNextId(), Times.Once);
-        _mockTodoList.Verify(x => x.AddItem(
-            nextId,
-            command.Title,
-            command.Description,
-            command.Category
-        ), Times.Once);
+        _mockRepository.Verify(x => x.GetAggregateAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _mockRepository.Verify(x => x.SaveAsync(
+            It.Is<TodoItem>(i => 
+                i.Id == 0 && 
+                i.Title == "Complete Project Documentation" &&
+                i.Description == "Write comprehensive documentation for the project" &&
+                i.Category == "Work"), 
+            It.IsAny<CancellationToken>()), 
+            Times.Once);
+        _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
 
-        // Verify no other interactions
-        _mockRepository.VerifyNoOtherCalls();
+    [Fact]
+    public async Task Handle_WhenUnitOfWorkFails_ShouldNotAffectResult()
+    {
+        // Arrange - simulating a scenario where SaveChanges returns 0 (no rows affected)
+        var command = new AddTodoItemCommand("Task", "Description", "Work");
+
+        var categoryValidator = new Mock<ICategoryValidator>();
+        categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
+        var aggregate = new TodoList(categoryValidator.Object);
+        
+        _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
+        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert - Handler doesn't check the return value, so it still succeeds
+        result.IsSuccess.Should().BeTrue();
     }
 
     #endregion
 }
+
+
+
+
+

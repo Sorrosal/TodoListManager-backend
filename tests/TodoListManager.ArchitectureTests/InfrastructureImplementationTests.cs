@@ -11,7 +11,7 @@ public class InfrastructureImplementationTests
     public void RepositoryImplementations_Should_ImplementDomainInterfaces()
     {
         // Arrange
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
         // Act - Get repository implementations
@@ -39,7 +39,7 @@ public class InfrastructureImplementationTests
     public void ServiceImplementations_Should_ImplementDomainInterfaces()
     {
         // Arrange
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
         // Act - Get service implementations
@@ -69,7 +69,7 @@ public class InfrastructureImplementationTests
     public void InfrastructureClasses_Should_BePublicOrInternal()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act
         var result = Types.InAssembly(assembly)
@@ -91,7 +91,7 @@ public class InfrastructureImplementationTests
     public void Configuration_Should_BeInConfigurationNamespace()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act - Get configuration classes
         var configurations = Types.InAssembly(assembly)
@@ -114,7 +114,7 @@ public class InfrastructureImplementationTests
     public void InfrastructureRepositories_Should_NotBeSealed()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act - Repository implementations can be inherited for testing
         var repositories = Types.InAssembly(assembly)
@@ -137,7 +137,7 @@ public class InfrastructureImplementationTests
     public void InfrastructureServices_Should_HaveConstructorDependencies()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act - Get service implementations
         var services = Types.InAssembly(assembly)
@@ -163,7 +163,7 @@ public class InfrastructureImplementationTests
     public void Repositories_Should_HaveSyncMethods()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act - Get repository implementations
         var repositories = Types.InAssembly(assembly)
@@ -187,7 +187,7 @@ public class InfrastructureImplementationTests
     public void InfrastructureAssembly_Should_ReferenceDomainAssembly()
     {
         // Arrange
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
         // Act

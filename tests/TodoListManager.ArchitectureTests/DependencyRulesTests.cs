@@ -64,7 +64,7 @@ public class DependencyRulesTests
     public void Application_Should_NotHaveDependencyOnInfrastructure()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var assembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
         // Act
         var result = Types.InAssembly(assembly)
@@ -81,7 +81,7 @@ public class DependencyRulesTests
     public void Application_Should_NotHaveDependencyOnApi()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var assembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
 
         // Act
         var result = Types.InAssembly(assembly)
@@ -98,7 +98,7 @@ public class DependencyRulesTests
     public void Infrastructure_Should_NotHaveDependencyOnApi()
     {
         // Arrange
-        var assembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var assembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
 
         // Act
         var result = Types.InAssembly(assembly)
@@ -115,7 +115,7 @@ public class DependencyRulesTests
     public void Application_Should_DependOnDomain()
     {
         // Arrange
-        var applicationAssembly = typeof(TodoListManager.Application.Services.AuthenticationService).Assembly;
+        var applicationAssembly = typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly;
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
         // Act - Check that Application assembly references Domain assembly
@@ -131,7 +131,7 @@ public class DependencyRulesTests
     public void Infrastructure_Should_DependOnDomain()
     {
         // Arrange
-        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.PasswordHasher).Assembly;
+        var infrastructureAssembly = typeof(TodoListManager.Infrastructure.Services.JwtTokenService).Assembly;
         var domainAssembly = typeof(TodoListManager.Domain.Common.Result).Assembly;
 
         // Act - Check that Infrastructure assembly references Domain assembly
