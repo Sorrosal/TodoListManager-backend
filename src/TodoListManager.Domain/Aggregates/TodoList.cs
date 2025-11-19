@@ -7,13 +7,18 @@ using TodoListManager.Domain.Services;
 namespace TodoListManager.Domain.Aggregates;
 
 /// <summary>
-/// TodoList aggregate root - manages a collection of todo items with business rules.
+/// TodoList aggregate root that manages a collection of todo items and enforces business rules.
 /// </summary>
 public class TodoList : ITodoList
 {
     private readonly Dictionary<int, TodoItem> _items;
     private readonly ICategoryValidator _categoryValidator;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="TodoList"/> class.
+    /// </summary>
+    /// <param name="categoryValidator">The category validator service.</param>
+    /// <exception cref="ArgumentNullException">Thrown when categoryValidator is null.</exception>
     public TodoList(ICategoryValidator categoryValidator)
     {
         _items = new Dictionary<int, TodoItem>();
@@ -30,7 +35,6 @@ public class TodoList : ITodoList
     /// <exception cref="InvalidCategoryException">Thrown when the category is not valid.</exception>
     public void AddItem(int id, string title, string description, string category)
     {
-        // Domain validation through domain service
         if (!_categoryValidator.IsValidCategory(category))
         {
             throw new InvalidCategoryException(category);
@@ -42,6 +46,7 @@ public class TodoList : ITodoList
 
     /// <summary>
     /// Updates the description of an existing todo item.
+    /// Business rule: Cannot modify items with more than 50% progress.
     /// </summary>
     /// <param name="id">The unique identifier of the item to update.</param>
     /// <param name="description">The new description.</param>
@@ -51,7 +56,6 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        // Business rule: Cannot modify items with more than 50% progress
         if (item.GetTotalProgress() > 50m)
         {
             throw new TodoItemCannotBeModifiedException(id);
@@ -62,6 +66,7 @@ public class TodoList : ITodoList
 
     /// <summary>
     /// Removes a todo item from the list.
+    /// Business rule: Cannot remove items with more than 50% progress.
     /// </summary>
     /// <param name="id">The unique identifier of the item to remove.</param>
     /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
@@ -70,7 +75,6 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        // Business rule: Cannot remove items with more than 50% progress
         if (item.GetTotalProgress() > 50m)
         {
             throw new TodoItemCannotBeModifiedException(id);
@@ -81,6 +85,7 @@ public class TodoList : ITodoList
 
     /// <summary>
     /// Registers a progression entry for a todo item with validation.
+    /// Business rules: Percent must be between 0 and 100, date must be after all existing progressions, and total progress cannot exceed 100%.
     /// </summary>
     /// <param name="id">The unique identifier of the item.</param>
     /// <param name="dateTime">The date of the progression.</param>
@@ -91,20 +96,17 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        // Business rule: Percent must be valid
         if (percent is <= 0 or >= 100)
         {
             throw new InvalidProgressionException("Percent must be greater than 0 and less than 100.");
         }
 
-        // Business rule: Date must be greater than all existing progression dates
         var lastDate = item.GetLastProgressionDate();
         if (lastDate.HasValue && dateTime <= lastDate.Value)
         {
             throw new InvalidProgressionException("The progression date must be greater than all existing progression dates.");
         }
 
-        // Business rule: Total progress cannot exceed 100%
         var currentTotal = item.GetTotalProgress();
         if (currentTotal + percent > 100m)
         {

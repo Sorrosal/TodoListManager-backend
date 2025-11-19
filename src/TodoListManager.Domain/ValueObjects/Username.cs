@@ -64,16 +64,30 @@ public sealed class Username : IEquatable<Username>
         return StringComparer.OrdinalIgnoreCase.GetHashCode(Value);
     }
 
+    /// <summary>
+    /// Returns the string representation of the Username.
+    /// </summary>
+    /// <returns>The username value.</returns>
     public override string ToString() => Value;
 
+    /// <summary>
+    /// Implicitly converts a Username to a string.
+    /// </summary>
+    /// <param name="username">The Username to convert.</param>
     public static implicit operator string(Username username) => username.Value;
 
+    /// <summary>
+    /// Determines whether two Username instances are equal.
+    /// </summary>
     public static bool operator ==(Username? left, Username? right)
     {
         if (left is null) return right is null;
         return left.Equals(right);
     }
 
+    /// <summary>
+    /// Determines whether two Username instances are not equal.
+    /// </summary>
     public static bool operator !=(Username? left, Username? right)
     {
         return !(left == right);

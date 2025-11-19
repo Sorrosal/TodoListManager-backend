@@ -1,5 +1,8 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using TodoListManager.Domain.Aggregates;
+using TodoListManager.Domain.Entities;
+
 namespace TodoListManager.Domain.Repositories;
 
 /// <summary>
@@ -8,14 +11,15 @@ namespace TodoListManager.Domain.Repositories;
 public interface ITodoListRepository
 {
     /// <summary>
-    /// Generates the next available ID for a todo item.
-    /// </summary>
-    /// <returns>The next available ID.</returns>
-    public int GetNextId();
-
-    /// <summary>
     /// Gets all valid categories for todo items.
     /// </summary>
     /// <returns>A list of valid category names.</returns>
     public List<string> GetAllCategories();
+
+    // Domain-level operations
+    public Task<TodoItem?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
+    public Task<List<TodoItem>> GetAllDomainItemsAsync(CancellationToken cancellationToken = default);
+    public Task SaveAsync(TodoItem item, CancellationToken cancellationToken = default);
+    public Task DeleteAsync(TodoItem item, CancellationToken cancellationToken = default);
+    public Task<TodoList> GetAggregateAsync(CancellationToken cancellationToken = default);
 }
