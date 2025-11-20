@@ -44,7 +44,6 @@ public class AddTodoItemCommandHandler : IRequestHandler<AddTodoItemCommand, Res
 
             aggregate.AddItem(0, command.Title, command.Description, command.Category);
 
-            // Get the newly added item (it will have Id = 0 before saving)
             var newItem = aggregate.GetAllItems().First(i => i.Id == 0);
             
             await _repository.SaveAsync(newItem, cancellationToken);
