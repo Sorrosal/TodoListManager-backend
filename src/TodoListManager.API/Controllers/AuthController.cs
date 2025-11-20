@@ -1,11 +1,10 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TodoListManager.Application.DTOs;
+using TodoListManager.Application.Services;
 using TodoListManager.Domain.Services;
-using TodoListManager.Infrastructure.Identity;
 
 namespace TodoListManager.API.Controllers;
 
@@ -17,14 +16,14 @@ namespace TodoListManager.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthenticationService _authenticationService;
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserService _userService;
 
     public AuthController(
         IAuthenticationService authenticationService,
-        UserManager<ApplicationUser> userManager)
+        IUserService userService)
     {
-        _authenticationService = authenticationService;
-        _userManager = userManager;
+        _authenticationService = authenticationService ?? throw new ArgumentNullException(nameof(authenticationService));
+        _userService = userService ?? throw new ArgumentNullException(nameof(userService));
     }
 
     /// <summary>
@@ -34,26 +33,27 @@ public class AuthController : ControllerBase
     /// <returns>JWT token and user information.</returns>
     [HttpPost("login")]
     [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
-        var result = await _authenticationService.Authenticate(request.Username, request.Password);
+        var authResult = await _authenticationService.Authenticate(request.Username, request.Password);
 
-        if (result.IsFailure)
-            return Unauthorized(new { error = result.Error });
+        if (authResult.IsFailure)
+            return Unauthorized(new { error = authResult.Error });
 
-        var user = await _userManager.FindByNameAsync(request.Username);
-        if (user == null)
-            return Unauthorized(new { error = "User not found" });
+        var userResult = await _userService.GetUserByUsernameAsync(request.Username);
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var claims = await _userManager.GetClaimsAsync(user);
+        if (userResult.IsFailure)
+            return Unauthorized(new { error = userResult.Error });
 
+        var userInfo = userResult.Value;
         var response = new LoginResponse
         {
-            Token = result.Value,
-            Username = user.UserName ?? string.Empty,
-            Roles = roles.ToList(),
-            Permissions = claims.Select(c => c.Value).Distinct().ToList()
+            Token = authResult.Value,
+            Username = userInfo.Username,
+            Roles = userInfo.Roles,
+            Permissions = userInfo.Permissions
         };
 
         return Ok(response);
@@ -65,26 +65,28 @@ public class AuthController : ControllerBase
     /// <returns>User information.</returns>
     [HttpGet("me")]
     [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCurrentUser()
     {
         var username = User.Identity?.Name;
         if (string.IsNullOrEmpty(username))
             return Unauthorized();
 
-        var user = await _userManager.FindByNameAsync(username);
-        if (user == null)
-            return NotFound(new { error = "User not found" });
+        var result = await _userService.GetUserByUsernameAsync(username);
 
-        var roles = await _userManager.GetRolesAsync(user);
-        var claims = await _userManager.GetClaimsAsync(user);
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
 
+        var userInfo = result.Value;
         return Ok(new
         {
-            user.Id,
-            Username = user.UserName,
-            Email = user.Email,
-            Roles = roles.ToList(),
-            Permissions = claims.Select(c => c.Value).Distinct().ToList()
+            userInfo.Id,
+            userInfo.Username,
+            userInfo.Email,
+            userInfo.Roles,
+            userInfo.Permissions
         });
     }
 
@@ -95,24 +97,17 @@ public class AuthController : ControllerBase
     /// <returns>Result of registration.</returns>
     [HttpPost("register")]
     [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var user = new ApplicationUser
-        {
-            UserName = request.Username,
-            Email = request.Email
-        };
+        var result = await _userService.RegisterUserAsync(
+            request.Username, 
+            request.Email, 
+            request.Password);
 
-        var result = await _userManager.CreateAsync(user, request.Password);
-
-        if (!result.Succeeded)
-        {
-            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-            return BadRequest(new { error = errors });
-        }
-
-        // Assign default User role
-        await _userManager.AddToRoleAsync(user, "User");
+        if (result.IsFailure)
+            return BadRequest(new { error = result.Error });
 
         return Ok(new { message = "User registered successfully" });
     }

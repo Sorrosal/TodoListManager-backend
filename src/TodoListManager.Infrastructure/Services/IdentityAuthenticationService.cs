@@ -9,6 +9,7 @@ namespace TodoListManager.Infrastructure.Services;
 
 /// <summary>
 /// Authentication service using ASP.NET Core Identity.
+/// Infrastructure concern - implements domain interface.
 /// </summary>
 public class IdentityAuthenticationService : IAuthenticationService
 {
@@ -39,7 +40,11 @@ public class IdentityAuthenticationService : IAuthenticationService
         if (!isPasswordValid)
             return Result.Failure<string>("Invalid username or password.");
 
-        var token = await _tokenService.GenerateTokenAsync(identityUser);
+        var roles = await _userManager.GetRolesAsync(identityUser);
+        var token = await _tokenService.GenerateTokenAsync(
+            identityUser.Id,
+            identityUser.UserName ?? string.Empty,
+            roles);
 
         return Result.Success(token);
     }

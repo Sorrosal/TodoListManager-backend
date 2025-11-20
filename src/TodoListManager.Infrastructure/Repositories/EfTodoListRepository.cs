@@ -5,14 +5,17 @@ using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Services;
 using TodoListManager.Domain.Entities;
 using TodoListManager.Infrastructure.Persistence;
-using TodoListManager.Domain.Common;
 
 namespace TodoListManager.Infrastructure.Repositories;
 
+/// <summary>
+/// Entity Framework implementation of ITodoListRepository.
+/// Infrastructure concern - bridges domain to EF Core.
+/// Follows Repository pattern and Clean Architecture principles.
+/// </summary>
 public class EfTodoListRepository : ITodoListRepository
 {
     private readonly TodoDbContext _db;
-    private readonly IGenericRepository<TodoItemEntity> _genericRepo;
     private readonly ICategoryValidator _categoryValidator;
 
     private static readonly string[] ValidCategories = new[]
@@ -25,11 +28,10 @@ public class EfTodoListRepository : ITodoListRepository
         "Other"
     };
 
-    public EfTodoListRepository(TodoDbContext db, IGenericRepository<TodoItemEntity> genericRepo, ICategoryValidator categoryValidator)
+    public EfTodoListRepository(TodoDbContext db, ICategoryValidator categoryValidator)
     {
-        _db = db;
-        _genericRepo = genericRepo;
-        _categoryValidator = categoryValidator;
+        _db = db ?? throw new ArgumentNullException(nameof(db));
+        _categoryValidator = categoryValidator ?? throw new ArgumentNullException(nameof(categoryValidator));
     }
 
     public List<string> GetAllCategories()
@@ -39,35 +41,39 @@ public class EfTodoListRepository : ITodoListRepository
 
     public async Task<TodoItem?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var entity = await _db.TodoItems.Include(t => t.Progressions).FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-        if (entity == null) return null;
-        return MapToDomain(entity);
+        var entity = await _db.TodoItems
+            .Include(t => t.Progressions)
+            .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
+
+        return entity == null ? null : MapToDomain(entity);
     }
 
     public async Task<List<TodoItem>> GetAllDomainItemsAsync(CancellationToken cancellationToken = default)
     {
-        var entities = await _db.TodoItems.Include(t => t.Progressions).ToListAsync(cancellationToken);
+        var entities = await _db.TodoItems
+            .Include(t => t.Progressions)
+            .ToListAsync(cancellationToken);
+
         return entities.Select(MapToDomain).ToList();
     }
 
     public async Task SaveAsync(TodoItem item, CancellationToken cancellationToken = default)
     {
-        var existing = await _db.TodoItems.Include(t => t.Progressions).FirstOrDefaultAsync(t => t.Id == item.Id, cancellationToken);
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
+
+        var existing = await _db.TodoItems
+            .Include(t => t.Progressions)
+            .FirstOrDefaultAsync(t => t.Id == item.Id, cancellationToken);
+
         if (existing == null)
         {
             var newEntity = MapToEntity(item);
-            await _genericRepo.AddAsync(newEntity, cancellationToken);
+            await _db.TodoItems.AddAsync(newEntity, cancellationToken);
         }
         else
         {
-            existing.Title = item.Title;
-            existing.Description = item.Description;
-            existing.Category = item.Category;
-
-            // sync progressions: simple approach: clear and add
-            _db.Progressions.RemoveRange(existing.Progressions);
-            existing.Progressions = item.Progressions.Select(p => new ProgressionEntity { TodoItemId = existing.Id, Date = p.Date, Percent = p.Percent }).ToList();
-            await _genericRepo.UpdateAsync(existing, cancellationToken);
+            UpdateEntity(existing, item);
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -75,38 +81,64 @@ public class EfTodoListRepository : ITodoListRepository
 
     public async Task DeleteAsync(TodoItem item, CancellationToken cancellationToken = default)
     {
-        var existing = await _db.TodoItems.Include(t => t.Progressions).FirstOrDefaultAsync(t => t.Id == item.Id, cancellationToken);
-        if (existing == null) return;
-        await _genericRepo.DeleteAsync(existing, cancellationToken);
-        await _db.SaveChangesAsync(cancellationToken);
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
+
+        var existing = await _db.TodoItems
+            .Include(t => t.Progressions)
+            .FirstOrDefaultAsync(t => t.Id == item.Id, cancellationToken);
+
+        if (existing != null)
+        {
+            _db.TodoItems.Remove(existing);
+            await _db.SaveChangesAsync(cancellationToken);
+        }
     }
 
-    public Task<TodoList> GetAggregateAsync(CancellationToken cancellationToken = default)
+    public async Task<TodoList> GetAggregateAsync(CancellationToken cancellationToken = default)
     {
-        // Build a TodoList aggregate from all items
         var list = new TodoList(_categoryValidator);
-        var items = _db.TodoItems.Include(t => t.Progressions).AsEnumerable().OrderBy(e => e.Id);
-        foreach (var e in items)
+        var items = await _db.TodoItems
+            .Include(t => t.Progressions)
+            .OrderBy(e => e.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var entity in items)
         {
-            var item = MapToDomain(e);
-            // use internal AddItem to the aggregate
+            var item = MapToDomain(entity);
             list.AddItem(item.Id, item.Title, item.Description, item.Category);
-            foreach (var p in item.Progressions)
+            
+            foreach (var progression in item.Progressions)
             {
-                list.RegisterProgression(item.Id, p.Date, p.Percent);
+                list.RegisterProgression(item.Id, progression.Date, progression.Percent);
             }
         }
 
-        return Task.FromResult(list);
+        return list;
     }
 
-    private TodoItem MapToDomain(TodoItemEntity e)
+    /// <summary>
+    /// Maps EF entity to domain entity.
+    /// </summary>
+    private TodoItem MapToDomain(TodoItemEntity entity)
     {
-        var item = new TodoItem(e.Id, e.Title, e.Description ?? string.Empty, e.Category);
-        foreach (var p in e.Progressions.OrderBy(p => p.Date)) item.AddProgression(p.Date, p.Percent);
+        var item = new TodoItem(
+            entity.Id, 
+            entity.Title, 
+            entity.Description ?? string.Empty, 
+            entity.Category);
+
+        foreach (var progression in entity.Progressions.OrderBy(p => p.Date))
+        {
+            item.AddProgression(progression.Date, progression.Percent);
+        }
+
         return item;
     }
 
+    /// <summary>
+    /// Maps domain entity to EF entity.
+    /// </summary>
     private TodoItemEntity MapToEntity(TodoItem item)
     {
         return new TodoItemEntity
@@ -115,7 +147,34 @@ public class EfTodoListRepository : ITodoListRepository
             Title = item.Title,
             Description = item.Description,
             Category = item.Category,
-            Progressions = item.Progressions.Select(p => new ProgressionEntity { Date = p.Date, Percent = p.Percent }).ToList()
+            Progressions = item.Progressions
+                .Select(p => new ProgressionEntity 
+                { 
+                    Date = p.Date, 
+                    Percent = p.Percent 
+                })
+                .ToList()
         };
+    }
+
+    /// <summary>
+    /// Updates existing EF entity with domain entity data.
+    /// </summary>
+    private void UpdateEntity(TodoItemEntity existing, TodoItem item)
+    {
+        existing.Title = item.Title;
+        existing.Description = item.Description;
+        existing.Category = item.Category;
+
+        // Sync progressions: remove old, add new
+        _db.Progressions.RemoveRange(existing.Progressions);
+        existing.Progressions = item.Progressions
+            .Select(p => new ProgressionEntity 
+            { 
+                TodoItemId = existing.Id, 
+                Date = p.Date, 
+                Percent = p.Percent 
+            })
+            .ToList();
     }
 }

@@ -1,19 +1,24 @@
 // Copyright (c) Sergio Sorrosal. All Rights Reserved.
 
+using TodoListManager.Domain.Common;
 using TodoListManager.Domain.ValueObjects;
 
 namespace TodoListManager.Domain.Entities;
 
 /// <summary>
 /// Represents a todo item with progression tracking capabilities.
+/// Entity with identity and encapsulated business logic.
 /// </summary>
-public class TodoItem
+public class TodoItem : BaseEntity
 {
-    public int Id { get; private set; }
-    public string Title { get; private set; }
-    public string Description { get; private set; }
-    public string Category { get; private set; }
+    private string _title;
+    private string _description;
+    private string _category;
     private readonly List<Progression> _progressions;
+
+    public string Title => _title;
+    public string Description => _description;
+    public string Category => _category;
     public IReadOnlyList<Progression> Progressions => _progressions.AsReadOnly();
 
     /// <summary>
@@ -30,10 +35,13 @@ public class TodoItem
     /// <param name="category">The category of the todo item.</param>
     public TodoItem(int id, string title, string description, string category)
     {
+        if (string.IsNullOrWhiteSpace(title))
+            throw new ArgumentException("Title cannot be empty.", nameof(title));
+
         Id = id;
-        Title = title;
-        Description = description;
-        Category = category;
+        _title = title;
+        _description = description ?? string.Empty;
+        _category = category ?? throw new ArgumentNullException(nameof(category));
         _progressions = new List<Progression>();
     }
 
@@ -43,7 +51,7 @@ public class TodoItem
     /// <param name="description">The new description.</param>
     public void UpdateDescription(string description)
     {
-        Description = description;
+        _description = description ?? string.Empty;
     }
 
     /// <summary>

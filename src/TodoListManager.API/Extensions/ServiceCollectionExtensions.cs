@@ -5,6 +5,7 @@ using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using TodoListManager.Application.Behaviors;
+using TodoListManager.Application.Services;
 using TodoListManager.Application.Validators;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Repositories;
@@ -26,14 +27,17 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        // Token service
         services.AddScoped<ITokenService, JwtTokenService>();
 
+        // Database
         services.AddDbContext<TodoDbContext>(options =>
         {
             var conn = configuration.GetConnectionString("DefaultConnection");
             options.UseSqlServer(conn);
         });
 
+        // Identity
         services.AddIdentityCore<ApplicationUser>(options =>
         {
             options.Password.RequireDigit = false;
@@ -52,28 +56,40 @@ public static class ServiceCollectionExtensions
         .AddDefaultTokenProviders()
         .AddSignInManager();
 
+        // Repositories
         services.AddScoped<ITodoListRepository, TodoListManager.Infrastructure.Repositories.EfTodoListRepository>();
         services.AddScoped(typeof(IGenericRepository<>), typeof(TodoListManager.Infrastructure.Repositories.GenericRepository<>));
         services.AddScoped<TodoListManager.Domain.Common.IUnitOfWork>(sp => sp.GetRequiredService<TodoDbContext>());
+
+        // Infrastructure Services
+        services.AddScoped<IAuthenticationService, IdentityAuthenticationService>();
+        services.AddScoped<IUserService, IdentityUserService>();
 
         return services;
     }
 
     public static IServiceCollection AddDomain(this IServiceCollection services)
     {
+        // Domain services
         services.AddSingleton<ICategoryValidator, CategoryValidator>();
+        
+        // Aggregates
         services.AddScoped<TodoList>();
         services.AddScoped<ITodoList>(sp => sp.GetRequiredService<TodoList>());
+        
         return services;
     }
 
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        // MediatR (CQRS)
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(TodoListManager.Application.Commands.AddTodoItemCommand).Assembly));
 
+        // Pipeline behaviors
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        
+        // AutoMapper
         services.AddAutoMapper(typeof(TodoListManager.Application.Mappings.TodoItemMappingProfile).Assembly);
-        services.AddScoped<IAuthenticationService, IdentityAuthenticationService>();
 
         return services;
     }

@@ -3,21 +3,18 @@
 namespace TodoListManager.Domain.Services;
 
 /// <summary>
-/// Service interface for generating and validating authentication tokens.
+/// Service interface for generating authentication tokens.
+/// Follows Interface Segregation Principle - focused on token generation only.
+/// Domain layer defines the contract without knowing implementation details (JWT, OAuth, etc.)
 /// </summary>
 public interface ITokenService
 {
     /// <summary>
-    /// Generates a JWT token for the specified user.
+    /// Generates a token for the specified user.
     /// </summary>
-    /// <param name="user">The user to generate a token.</param>
-    /// <returns>The JWT token string.</returns>
-    public Task<string> GenerateTokenAsync(object user);
-
-    /// <summary>
-    /// Validates a JWT token.
-    /// </summary>
-    /// <param name="token">The token to validate.</param>
-    /// <returns>The user ID if valid, null otherwise.</returns>
-    public int? ValidateToken(string token);
+    /// <param name="userId">The user's unique identifier.</param>
+    /// <param name="username">The username.</param>
+    /// <param name="roles">The user's roles.</param>
+    /// <returns>The token string.</returns>
+    public Task<string> GenerateTokenAsync(int userId, string username, IEnumerable<string> roles);
 }
