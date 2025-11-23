@@ -5,6 +5,7 @@ using Moq;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Exceptions;
 using TodoListManager.Domain.Services;
+using TodoListManager.Domain.Specifications;
 
 namespace TodoListManager.Domain.Tests.Aggregates;
 
@@ -15,12 +16,16 @@ namespace TodoListManager.Domain.Tests.Aggregates;
 public class TodoListTests
 {
     private readonly Mock<ICategoryValidator> _mockCategoryValidator;
+    private readonly CanModifyTodoItemSpecification _canModifySpecification;
+    private readonly ValidProgressionSpecification _validProgressionSpecification;
     private readonly TodoList _todoList;
 
     public TodoListTests()
     {
         _mockCategoryValidator = new Mock<ICategoryValidator>();
-        _todoList = new TodoList(_mockCategoryValidator.Object);
+        _canModifySpecification = new CanModifyTodoItemSpecification();
+        _validProgressionSpecification = new ValidProgressionSpecification();
+        _todoList = new TodoList(_mockCategoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
     }
 
     #region Constructor Tests
@@ -30,9 +35,11 @@ public class TodoListTests
     {
         // Arrange
         var categoryValidator = new Mock<ICategoryValidator>();
+        var canModifySpec = new CanModifyTodoItemSpecification();
+        var validProgressionSpec = new ValidProgressionSpecification();
 
         // Act
-        var todoList = new TodoList(categoryValidator.Object);
+        var todoList = new TodoList(categoryValidator.Object, canModifySpec, validProgressionSpec);
 
         // Assert
         todoList.Should().NotBeNull();
@@ -43,7 +50,7 @@ public class TodoListTests
     public void Constructor_WithNullCategoryValidator_ShouldThrowArgumentNullException()
     {
         // Act
-        Action act = () => new TodoList(null!);
+        Action act = () => new TodoList(null!, _canModifySpecification, _validProgressionSpecification);
 
         // Assert
         act.Should().Throw<ArgumentNullException>()

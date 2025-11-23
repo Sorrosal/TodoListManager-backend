@@ -5,6 +5,7 @@ using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Services;
 using TodoListManager.Domain.Entities;
 using TodoListManager.Infrastructure.Persistence;
+using TodoListManager.Domain.Specifications;
 
 namespace TodoListManager.Infrastructure.Repositories;
 
@@ -17,6 +18,8 @@ public class EfTodoListRepository : ITodoListRepository
 {
     private readonly TodoDbContext _db;
     private readonly ICategoryValidator _categoryValidator;
+    private readonly CanModifyTodoItemSpecification _canModifySpecification;
+    private readonly ValidProgressionSpecification _validProgressionSpecification;
 
     private static readonly string[] ValidCategories = new[]
     {
@@ -28,10 +31,16 @@ public class EfTodoListRepository : ITodoListRepository
         "Other"
     };
 
-    public EfTodoListRepository(TodoDbContext db, ICategoryValidator categoryValidator)
+    public EfTodoListRepository(
+        TodoDbContext db, 
+        ICategoryValidator categoryValidator, 
+        CanModifyTodoItemSpecification canModifySpecification,
+        ValidProgressionSpecification validProgressionSpecification)
     {
         _db = db ?? throw new ArgumentNullException(nameof(db));
         _categoryValidator = categoryValidator ?? throw new ArgumentNullException(nameof(categoryValidator));
+        _canModifySpecification = canModifySpecification ?? throw new ArgumentNullException(nameof(canModifySpecification));
+        _validProgressionSpecification = validProgressionSpecification ?? throw new ArgumentNullException(nameof(validProgressionSpecification));
     }
 
     public List<string> GetAllCategories()
@@ -97,7 +106,7 @@ public class EfTodoListRepository : ITodoListRepository
 
     public async Task<TodoList> GetAggregateAsync(CancellationToken cancellationToken = default)
     {
-        var list = new TodoList(_categoryValidator);
+        var list = new TodoList(_categoryValidator, _canModifySpecification, _validProgressionSpecification);
         var items = await _db.TodoItems
             .Include(t => t.Progressions)
             .OrderBy(e => e.Id)

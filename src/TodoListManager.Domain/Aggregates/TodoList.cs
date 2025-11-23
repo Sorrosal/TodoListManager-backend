@@ -3,6 +3,7 @@
 using TodoListManager.Domain.Entities;
 using TodoListManager.Domain.Exceptions;
 using TodoListManager.Domain.Services;
+using TodoListManager.Domain.Specifications;
 
 namespace TodoListManager.Domain.Aggregates;
 
@@ -13,16 +14,25 @@ public class TodoList : ITodoList
 {
     private readonly Dictionary<int, TodoItem> _items;
     private readonly ICategoryValidator _categoryValidator;
+    private readonly CanModifyTodoItemSpecification _canModifySpecification;
+    private readonly ValidProgressionSpecification _validProgressionSpecification;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="TodoList"/> class.
     /// </summary>
     /// <param name="categoryValidator">The category validator service.</param>
-    /// <exception cref="ArgumentNullException">Thrown when categoryValidator is null.</exception>
-    public TodoList(ICategoryValidator categoryValidator)
+    /// <param name="canModifySpecification">The specification to check if an item can be modified.</param>
+    /// <param name="validProgressionSpecification">The specification to validate progressions.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
+    public TodoList(
+        ICategoryValidator categoryValidator, 
+        CanModifyTodoItemSpecification canModifySpecification,
+        ValidProgressionSpecification validProgressionSpecification)
     {
         _items = new Dictionary<int, TodoItem>();
         _categoryValidator = categoryValidator ?? throw new ArgumentNullException(nameof(categoryValidator));
+        _canModifySpecification = canModifySpecification ?? throw new ArgumentNullException(nameof(canModifySpecification));
+        _validProgressionSpecification = validProgressionSpecification ?? throw new ArgumentNullException(nameof(validProgressionSpecification));
     }
 
     /// <summary>
@@ -56,7 +66,7 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        if (item.GetTotalProgress() > 50m)
+        if (!_canModifySpecification.IsSatisfiedBy(item))
         {
             throw new TodoItemCannotBeModifiedException(id);
         }
@@ -75,7 +85,7 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        if (item.GetTotalProgress() > 50m)
+        if (!_canModifySpecification.IsSatisfiedBy(item))
         {
             throw new TodoItemCannotBeModifiedException(id);
         }
@@ -96,21 +106,24 @@ public class TodoList : ITodoList
     {
         var item = GetItemOrThrow(id);
 
-        if (percent is <= 0 or >= 100)
+        // Business rule: Percent must be valid
+        if (!_validProgressionSpecification.IsValidPercent(percent))
         {
-            throw new InvalidProgressionException("Percent must be greater than 0 and less than 100.");
+            throw new InvalidProgressionException(_validProgressionSpecification.GetPercentReason(percent));
         }
 
+        // Business rule: Date must be greater than all existing progression dates
         var lastDate = item.GetLastProgressionDate();
         if (lastDate.HasValue && dateTime <= lastDate.Value)
         {
             throw new InvalidProgressionException("The progression date must be greater than all existing progression dates.");
         }
 
+        // Business rule: Total progress cannot exceed 100%
         var currentTotal = item.GetTotalProgress();
-        if (currentTotal + percent > 100m)
+        if (_validProgressionSpecification.WouldExceedMaxTotal(currentTotal, percent))
         {
-            throw new InvalidProgressionException($"Adding {percent}% would exceed 100% total progress. Current progress: {currentTotal}%");
+            throw new InvalidProgressionException(_validProgressionSpecification.GetExceedsTotalReason(currentTotal, percent));
         }
 
         item.AddProgression(dateTime, percent);

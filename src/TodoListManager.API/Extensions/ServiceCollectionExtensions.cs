@@ -10,6 +10,7 @@ using TodoListManager.Application.Validators;
 using TodoListManager.Domain.Aggregates;
 using TodoListManager.Domain.Repositories;
 using TodoListManager.Domain.Services;
+using TodoListManager.Domain.Specifications;
 using TodoListManager.Infrastructure.Data;
 using TodoListManager.Infrastructure.Identity;
 using TodoListManager.Infrastructure.Persistence;
@@ -72,6 +73,10 @@ public static class ServiceCollectionExtensions
     {
         // Domain services
         services.AddSingleton<ICategoryValidator, CategoryValidator>();
+        
+        // Specifications
+        services.AddSingleton<CanModifyTodoItemSpecification>();
+        services.AddSingleton<ValidProgressionSpecification>();
         
         // Aggregates
         services.AddScoped<TodoList>();

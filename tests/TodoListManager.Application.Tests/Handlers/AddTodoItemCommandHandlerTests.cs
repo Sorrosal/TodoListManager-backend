@@ -9,6 +9,7 @@ using TodoListManager.Domain.Exceptions;
 using TodoListManager.Domain.Repositories;
 using TodoListManager.Domain.Services;
 using TodoListManager.Domain.Entities;
+using TodoListManager.Domain.Specifications;
 
 namespace TodoListManager.Application.Tests.Handlers;
 
@@ -21,12 +22,16 @@ public class AddTodoItemCommandHandlerTests
     private readonly Mock<ITodoListRepository> _mockRepository;
     private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
     private readonly AddTodoItemCommandHandler _handler;
+    private readonly CanModifyTodoItemSpecification _canModifySpecification;
+    private readonly ValidProgressionSpecification _validProgressionSpecification;
 
     public AddTodoItemCommandHandlerTests()
     {
         _mockRepository = new Mock<ITodoListRepository>();
         _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
         _handler = new AddTodoItemCommandHandler(_mockRepository.Object, _mockUnitOfWork.Object);
+        _canModifySpecification = new CanModifyTodoItemSpecification();
+        _validProgressionSpecification = new ValidProgressionSpecification();
     }
 
     #region Constructor Tests
@@ -53,7 +58,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
 
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -78,7 +83,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(aggregate)
@@ -109,8 +114,8 @@ public class AddTodoItemCommandHandlerTests
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
 
-        var aggregate1 = new TodoList(categoryValidator.Object);
-        var aggregate2 = new TodoList(categoryValidator.Object);
+        var aggregate1 = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
+        var aggregate2 = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
 
         _mockRepository.SetupSequence(r => r.GetAggregateAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(aggregate1)
@@ -140,7 +145,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory("InvalidCategory")).Returns(false);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
 
         // Act
@@ -159,7 +164,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
 
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>()))
@@ -202,7 +207,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -232,7 +237,7 @@ public class AddTodoItemCommandHandlerTests
         
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -255,7 +260,7 @@ public class AddTodoItemCommandHandlerTests
         
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -288,7 +293,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory("Work")).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -322,7 +327,7 @@ public class AddTodoItemCommandHandlerTests
 
         var categoryValidator = new Mock<ICategoryValidator>();
         categoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
-        var aggregate = new TodoList(categoryValidator.Object);
+        var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
         _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
@@ -337,6 +342,12 @@ public class AddTodoItemCommandHandlerTests
 
     #endregion
 }
+
+
+
+
+
+
 
 
 
