@@ -10,7 +10,7 @@ namespace TodoListManager.Application.Mappings;
 /// <summary>
 /// AutoMapper profile for mapping between Domain entities and DTOs.
 /// </summary>
-public class TodoItemMappingProfile : Profile
+public sealed class TodoItemMappingProfile : Profile
 {
     public TodoItemMappingProfile()
     {

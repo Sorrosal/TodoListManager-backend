@@ -12,7 +12,7 @@ namespace TodoListManager.Infrastructure.Services;
 /// Implementation of IUserService using ASP.NET Core Identity.
 /// Infrastructure concern - bridges domain/application to Identity framework.
 /// </summary>
-public class IdentityUserService : IUserService
+public sealed class IdentityUserService : IUserService
 {
     private readonly UserManager<ApplicationUser> _userManager;
 

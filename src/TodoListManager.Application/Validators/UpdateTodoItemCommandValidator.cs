@@ -5,7 +5,7 @@ using TodoListManager.Application.Commands;
 
 namespace TodoListManager.Application.Validators;
 
-public class UpdateTodoItemCommandValidator : AbstractValidator<UpdateTodoItemCommand>
+public sealed class UpdateTodoItemCommandValidator : AbstractValidator<UpdateTodoItemCommand>
 {
     public UpdateTodoItemCommandValidator()
     {

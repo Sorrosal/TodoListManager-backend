@@ -12,7 +12,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to remove a todo item.
 /// </summary>
-public class RemoveTodoItemCommandHandler : IRequestHandler<RemoveTodoItemCommand, Result>
+public sealed class RemoveTodoItemCommandHandler : IRequestHandler<RemoveTodoItemCommand, Result>
 {
     private readonly ITodoListRepository _repository;
     private readonly IUnitOfWork _unitOfWork;

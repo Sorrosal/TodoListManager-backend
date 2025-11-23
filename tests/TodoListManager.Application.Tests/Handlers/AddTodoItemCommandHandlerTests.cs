@@ -230,7 +230,7 @@ public class AddTodoItemCommandHandlerTests
     #region Edge Cases
 
     [Fact]
-    public async Task Handle_WithEmptyStrings_ShouldStillCallSave()
+    public async Task Handle_WithEmptyStrings_ShouldReturnFailure()
     {
         // Arrange
         var command = new AddTodoItemCommand("", "", "Work");
@@ -240,14 +240,13 @@ public class AddTodoItemCommandHandlerTests
         var aggregate = new TodoList(categoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
         
         _mockRepository.Setup(r => r.GetAggregateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(aggregate);
-        _mockRepository.Setup(r => r.SaveAsync(It.IsAny<TodoItem>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
-        _mockUnitOfWork.Setup(u => u.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
         // Act
-        await _handler.Handle(command, CancellationToken.None);
+        var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
-        _mockRepository.Verify(x => x.SaveAsync(It.Is<TodoItem>(i => i.Id == 0), It.IsAny<CancellationToken>()), Times.Once);
+        // Assert - Should fail because domain validates non-empty title
+        result.IsFailure.Should().BeTrue();
+        result.Error.Should().Contain("Title");
     }
 
     [Fact]
@@ -342,6 +341,16 @@ public class AddTodoItemCommandHandlerTests
 
     #endregion
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -11,7 +11,7 @@ namespace TodoListManager.Infrastructure.Services;
 /// Authentication service using ASP.NET Core Identity.
 /// Infrastructure concern - implements domain interface.
 /// </summary>
-public class IdentityAuthenticationService : IAuthenticationService
+public sealed class IdentityAuthenticationService : IAuthenticationService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITokenService _tokenService;

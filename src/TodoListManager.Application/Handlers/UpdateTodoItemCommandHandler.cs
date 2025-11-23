@@ -11,7 +11,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to update an existing todo item.
 /// </summary>
-public class UpdateTodoItemCommandHandler : IRequestHandler<UpdateTodoItemCommand, Result>
+public sealed class UpdateTodoItemCommandHandler : IRequestHandler<UpdateTodoItemCommand, Result>
 {
     private readonly ITodoListRepository _repository;
     private readonly IUnitOfWork _unitOfWork;

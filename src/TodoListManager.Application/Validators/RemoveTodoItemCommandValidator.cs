@@ -5,7 +5,7 @@ using TodoListManager.Application.Commands;
 
 namespace TodoListManager.Application.Validators;
 
-public class RemoveTodoItemCommandValidator : AbstractValidator<RemoveTodoItemCommand>
+public sealed class RemoveTodoItemCommandValidator : AbstractValidator<RemoveTodoItemCommand>
 {
     public RemoveTodoItemCommandValidator()
     {

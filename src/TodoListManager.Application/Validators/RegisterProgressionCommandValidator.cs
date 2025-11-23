@@ -5,7 +5,7 @@ using TodoListManager.Application.Commands;
 
 namespace TodoListManager.Application.Validators;
 
-public class RegisterProgressionCommandValidator : AbstractValidator<RegisterProgressionCommand>
+public sealed class RegisterProgressionCommandValidator : AbstractValidator<RegisterProgressionCommand>
 {
     public RegisterProgressionCommandValidator()
     {

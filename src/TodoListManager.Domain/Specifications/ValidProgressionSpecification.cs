@@ -41,11 +41,8 @@ public class ValidProgressionSpecification : Specification<Progression>
         if (progression == null)
             return "Progression is null";
 
-        if (progression.Percent <= MinPercent)
-            return $"Percent must be greater than {MinPercent}";
-
-        if (progression.Percent >= MaxPercent)
-            return $"Percent must be less than {MaxPercent}";
+        if (progression.Percent <= MinPercent || progression.Percent >= MaxPercent)
+            return $"Percent must be greater than {MinPercent} and less than {MaxPercent}";
 
         return string.Empty;
     }
@@ -55,11 +52,8 @@ public class ValidProgressionSpecification : Specification<Progression>
     /// </summary>
     public string GetPercentReason(decimal percent)
     {
-        if (percent <= MinPercent)
-            return $"Percent must be greater than {MinPercent}";
-
-        if (percent >= MaxPercent)
-            return $"Percent must be less than {MaxPercent}";
+        if (percent <= MinPercent || percent >= MaxPercent)
+            return $"Percent must be greater than {MinPercent} and less than {MaxPercent}";
 
         return string.Empty;
     }

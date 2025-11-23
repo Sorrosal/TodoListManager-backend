@@ -11,7 +11,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to register a progression for a todo item.
 /// </summary>
-public class RegisterProgressionCommandHandler : IRequestHandler<RegisterProgressionCommand, Result>
+public sealed class RegisterProgressionCommandHandler : IRequestHandler<RegisterProgressionCommand, Result>
 {
     private readonly ITodoListRepository _repository;
     private readonly IUnitOfWork _unitOfWork;

@@ -53,11 +53,11 @@ public class ValidProgressionSpecificationTests
     [Fact]
     public void IsSatisfiedBy_WithZeroPercent_ShouldReturnFalse()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, 0m);
+        // Arrange - Use IsValidPercent method instead of creating invalid Progression
+        var percent = 0m;
 
         // Act
-        var result = _specification.IsSatisfiedBy(progression);
+        var result = _specification.IsValidPercent(percent);
 
         // Assert
         result.Should().BeFalse();
@@ -66,11 +66,11 @@ public class ValidProgressionSpecificationTests
     [Fact]
     public void IsSatisfiedBy_WithNegativePercent_ShouldReturnFalse()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, -10m);
+        // Arrange - Use IsValidPercent method instead of creating invalid Progression
+        var percent = -10m;
 
         // Act
-        var result = _specification.IsSatisfiedBy(progression);
+        var result = _specification.IsValidPercent(percent);
 
         // Assert
         result.Should().BeFalse();
@@ -79,11 +79,11 @@ public class ValidProgressionSpecificationTests
     [Fact]
     public void IsSatisfiedBy_WithExactly100Percent_ShouldReturnFalse()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, 100m);
+        // Arrange - Use IsValidPercent method instead
+        var percent = 100m;
 
         // Act
-        var result = _specification.IsSatisfiedBy(progression);
+        var result = _specification.IsValidPercent(percent);
 
         // Assert
         result.Should().BeFalse();
@@ -92,11 +92,11 @@ public class ValidProgressionSpecificationTests
     [Fact]
     public void IsSatisfiedBy_WithPercentOver100_ShouldReturnFalse()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, 150m);
+        // Arrange - Use IsValidPercent method instead
+        var percent = 150m;
 
         // Act
-        var result = _specification.IsSatisfiedBy(progression);
+        var result = _specification.IsValidPercent(percent);
 
         // Assert
         result.Should().BeFalse();
@@ -112,11 +112,8 @@ public class ValidProgressionSpecificationTests
     [InlineData(200)]
     public void IsSatisfiedBy_WithInvalidPercents_ShouldReturnFalse(decimal percent)
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, percent);
-
-        // Act
-        var result = _specification.IsSatisfiedBy(progression);
+        // Act - Use IsValidPercent method instead of creating invalid Progression
+        var result = _specification.IsValidPercent(percent);
 
         // Assert
         result.Should().BeFalse();
@@ -152,57 +149,53 @@ public class ValidProgressionSpecificationTests
     [Fact]
     public void GetReason_WithZeroPercent_ShouldReturnMustBeGreaterThanZero()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, 0m);
+        // Arrange - Use GetPercentReason method instead
+        var percent = 0m;
 
         // Act
-        var reason = _specification.GetReason(progression);
+        var reason = _specification.GetPercentReason(percent);
 
         // Assert
-        reason.Should().Contain("must be greater than");
-        reason.Should().Contain("0");
+        reason.Should().Contain("must be greater than 0 and less than 100");
     }
 
     [Fact]
     public void GetReason_WithNegativePercent_ShouldReturnMustBeGreaterThanZero()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, -10m);
+        // Arrange - Use GetPercentReason method instead
+        var percent = -10m;
 
         // Act
-        var reason = _specification.GetReason(progression);
+        var reason = _specification.GetPercentReason(percent);
 
         // Assert
-        reason.Should().Contain("must be greater than");
-        reason.Should().Contain("0");
+        reason.Should().Contain("must be greater than 0 and less than 100");
     }
 
     [Fact]
     public void GetReason_With100Percent_ShouldReturnMustBeLessThan100()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, 100m);
+        // Arrange - Use GetPercentReason method instead
+        var percent = 100m;
 
         // Act
-        var reason = _specification.GetReason(progression);
+        var reason = _specification.GetPercentReason(percent);
 
         // Assert
-        reason.Should().Contain("must be less than");
-        reason.Should().Contain("100");
+        reason.Should().Contain("must be greater than 0 and less than 100");
     }
 
     [Fact]
     public void GetReason_WithPercentOver100_ShouldReturnMustBeLessThan100()
     {
-        // Arrange
-        var progression = new Progression(DateTime.Now, 150m);
+        // Arrange - Use GetPercentReason method instead
+        var percent = 150m;
 
         // Act
-        var reason = _specification.GetReason(progression);
+        var reason = _specification.GetPercentReason(percent);
 
         // Assert
-        reason.Should().Contain("must be less than");
-        reason.Should().Contain("100");
+        reason.Should().Contain("must be greater than 0 and less than 100");
     }
 
     #endregion
@@ -217,16 +210,14 @@ public class ValidProgressionSpecificationTests
         
         // Arrange - Just below 100
         var justBelow100 = new Progression(DateTime.Now, 99.99m);
-        
-        // Arrange - Exactly at boundaries
-        var exactlyZero = new Progression(DateTime.Now, 0m);
-        var exactly100 = new Progression(DateTime.Now, 100m);
 
-        // Act & Assert
+        // Act & Assert - Valid progressions
         _specification.IsSatisfiedBy(justAboveZero).Should().BeTrue();
         _specification.IsSatisfiedBy(justBelow100).Should().BeTrue();
-        _specification.IsSatisfiedBy(exactlyZero).Should().BeFalse();
-        _specification.IsSatisfiedBy(exactly100).Should().BeFalse();
+        
+        // Act & Assert - Invalid percents using IsValidPercent
+        _specification.IsValidPercent(0m).Should().BeFalse();
+        _specification.IsValidPercent(100m).Should().BeFalse();
     }
 
     #endregion
@@ -268,19 +259,13 @@ public class ValidProgressionSpecificationTests
             _specification.GetReason(progression).Should().BeEmpty();
         }
 
-        // Invalid progressions
-        var invalidProgressions = new[]
-        {
-            new Progression(DateTime.Now, 0m),
-            new Progression(DateTime.Now, 100m),
-            new Progression(DateTime.Now, -5m),
-            new Progression(DateTime.Now, 150m)
-        };
+        // Invalid percents - test using IsValidPercent instead of creating invalid objects
+        var invalidPercents = new[] { 0m, 100m, -5m, 150m };
 
-        foreach (var progression in invalidProgressions)
+        foreach (var percent in invalidPercents)
         {
-            _specification.IsSatisfiedBy(progression).Should().BeFalse();
-            _specification.GetReason(progression).Should().NotBeEmpty();
+            _specification.IsValidPercent(percent).Should().BeFalse();
+            _specification.GetPercentReason(percent).Should().NotBeEmpty();
         }
     }
 

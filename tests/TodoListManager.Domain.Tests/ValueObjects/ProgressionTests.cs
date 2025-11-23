@@ -188,35 +188,40 @@ public class ProgressionTests
         var progression = new Progression(date, percent);
 
         // Assert
+        // Constructor allows 0, but business logic (specification) considers it invalid
         progression.Percent.Should().Be(0m);
     }
 
     [Fact]
-    public void Constructor_WithNegativePercent_ShouldSucceed()
+    public void Constructor_WithNegativePercent_ShouldThrowArgumentException()
     {
         // Arrange
         var date = DateTime.Now;
         var percent = -10m;
 
         // Act
-        var progression = new Progression(date, percent);
+        Action act = () => new Progression(date, percent);
 
         // Assert
-        progression.Percent.Should().Be(-10m);
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Percent must be between 0 and 100*")
+            .WithParameterName("percent");
     }
 
     [Fact]
-    public void Constructor_WithPercentOver100_ShouldSucceed()
+    public void Constructor_WithPercentOver100_ShouldThrowArgumentException()
     {
         // Arrange
         var date = DateTime.Now;
         var percent = 150m;
 
         // Act
-        var progression = new Progression(date, percent);
+        Action act = () => new Progression(date, percent);
 
         // Assert
-        progression.Percent.Should().Be(150m);
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Percent must be between 0 and 100*")
+            .WithParameterName("percent");
     }
 
     #endregion

@@ -13,7 +13,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the query to retrieve all todo items.
 /// </summary>
-public class GetAllTodoItemsQueryHandler : IRequestHandler<GetAllTodoItemsQuery, Result<GetAllTodoItemsResponse>>
+public sealed class GetAllTodoItemsQueryHandler : IRequestHandler<GetAllTodoItemsQuery, Result<GetAllTodoItemsResponse>>
 {
     private readonly ITodoListRepository _repository;
     private readonly IMapper _mapper;

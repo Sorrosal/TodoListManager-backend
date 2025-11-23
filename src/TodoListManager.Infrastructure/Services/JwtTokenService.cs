@@ -14,7 +14,7 @@ namespace TodoListManager.Infrastructure.Services;
 /// JWT implementation of ITokenService.
 /// Infrastructure concern - Domain doesn't know about JWT specifics.
 /// </summary>
-public class JwtTokenService : ITokenService
+public sealed class JwtTokenService : ITokenService
 {
     private readonly JwtSettings _jwtSettings;
 

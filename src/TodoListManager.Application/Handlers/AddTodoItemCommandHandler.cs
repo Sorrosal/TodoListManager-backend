@@ -12,7 +12,7 @@ namespace TodoListManager.Application.Handlers;
 /// <summary>
 /// Handles the command to add a new todo item.
 /// </summary>
-public class AddTodoItemCommandHandler : IRequestHandler<AddTodoItemCommand, Result>
+public sealed class AddTodoItemCommandHandler : IRequestHandler<AddTodoItemCommand, Result>
 {
     private readonly ITodoListRepository _repository;
     private readonly IUnitOfWork _unitOfWork;
@@ -50,6 +50,10 @@ public class AddTodoItemCommandHandler : IRequestHandler<AddTodoItemCommand, Res
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return Result.Success();
+        }
+        catch (ArgumentException ex)
+        {
+            return Result.Failure(ex.Message);
         }
         catch (InvalidCategoryException ex)
         {

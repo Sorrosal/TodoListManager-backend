@@ -7,7 +7,7 @@ namespace TodoListManager.Infrastructure.Services;
 /// <summary>
 /// Infrastructure implementation of category validation using a static list.
 /// </summary>
-public class CategoryValidator : ICategoryValidator
+public sealed class CategoryValidator : ICategoryValidator
 {
     private static readonly string[] ValidCategories = new[]
     {
