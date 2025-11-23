@@ -25,7 +25,7 @@ public class TodoList : ITodoList
     /// <param name="validProgressionSpecification">The specification to validate progressions.</param>
     /// <exception cref="ArgumentNullException">Thrown when any parameter is null.</exception>
     public TodoList(
-        ICategoryValidator categoryValidator, 
+        ICategoryValidator categoryValidator,
         CanModifyTodoItemSpecification canModifySpecification,
         ValidProgressionSpecification validProgressionSpecification)
     {
@@ -36,75 +36,56 @@ public class TodoList : ITodoList
     }
 
     /// <summary>
-    /// Adds a new todo item to the list.
+    /// Creates a new validated todo item without adding it to the aggregate.
+    /// This is a factory method that enforces business rules for item creation.
     /// </summary>
     /// <param name="id">The unique identifier.</param>
     /// <param name="title">The title of the item.</param>
     /// <param name="description">The description of the item.</param>
     /// <param name="category">The category of the item.</param>
+    /// <returns>A validated TodoItem instance.</returns>
     /// <exception cref="InvalidCategoryException">Thrown when the category is not valid.</exception>
-    public void AddItem(int id, string title, string description, string category)
+    public TodoItem CreateValidatedItem(int id, string title, string description, string category)
     {
         if (!_categoryValidator.IsValidCategory(category))
         {
             throw new InvalidCategoryException(category);
         }
 
-        var item = new TodoItem(id, title, description, category);
-        _items[id] = item;
+        return new TodoItem(id, title, description, category);
     }
 
     /// <summary>
-    /// Updates the description of an existing todo item.
+    /// Validates and updates an existing item's description without loading the full aggregate.
     /// Business rule: Cannot modify items with more than 50% progress.
     /// </summary>
-    /// <param name="id">The unique identifier of the item to update.</param>
+    /// <param name="item">The item to update.</param>
     /// <param name="description">The new description.</param>
-    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
     /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
-    public void UpdateItem(int id, string description)
+    public void ValidateAndUpdateItem(TodoItem item, string description)
     {
-        var item = GetItemOrThrow(id);
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
 
         if (!_canModifySpecification.IsSatisfiedBy(item))
         {
-            throw new TodoItemCannotBeModifiedException(id);
+            throw new TodoItemCannotBeModifiedException(item.Id);
         }
 
         item.UpdateDescription(description);
     }
 
     /// <summary>
-    /// Removes a todo item from the list.
-    /// Business rule: Cannot remove items with more than 50% progress.
+    /// Validates and registers a progression for an existing item without loading the full aggregate.
     /// </summary>
-    /// <param name="id">The unique identifier of the item to remove.</param>
-    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
-    /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
-    public void RemoveItem(int id)
-    {
-        var item = GetItemOrThrow(id);
-
-        if (!_canModifySpecification.IsSatisfiedBy(item))
-        {
-            throw new TodoItemCannotBeModifiedException(id);
-        }
-
-        _items.Remove(id);
-    }
-
-    /// <summary>
-    /// Registers a progression entry for a todo item with validation.
-    /// Business rules: Percent must be between 0 and 100, date must be after all existing progressions, and total progress cannot exceed 100%.
-    /// </summary>
-    /// <param name="id">The unique identifier of the item.</param>
+    /// <param name="item">The item to add progression to.</param>
     /// <param name="dateTime">The date of the progression.</param>
     /// <param name="percent">The percentage of progress to add.</param>
-    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
     /// <exception cref="InvalidProgressionException">Thrown when the progression is invalid.</exception>
-    public void RegisterProgression(int id, DateTime dateTime, decimal percent)
+    public void ValidateAndRegisterProgression(TodoItem item, DateTime dateTime, decimal percent)
     {
-        var item = GetItemOrThrow(id);
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
 
         // Business rule: Percent must be valid
         if (!_validProgressionSpecification.IsValidPercent(percent))
@@ -127,6 +108,77 @@ public class TodoList : ITodoList
         }
 
         item.AddProgression(dateTime, percent);
+    }
+
+    /// <summary>
+    /// Validates if an item can be removed without loading the full aggregate.
+    /// </summary>
+    /// <param name="item">The item to validate for removal.</param>
+    /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
+    public void ValidateCanRemoveItem(TodoItem item)
+    {
+        if (item == null)
+            throw new ArgumentNullException(nameof(item));
+
+        if (!_canModifySpecification.IsSatisfiedBy(item))
+        {
+            throw new TodoItemCannotBeModifiedException(item.Id);
+        }
+    }
+
+    /// <summary>
+    /// Adds a new todo item to the list.
+    /// </summary>
+    /// <param name="id">The unique identifier.</param>
+    /// <param name="title">The title of the item.</param>
+    /// <param name="description">The description of the item.</param>
+    /// <param name="category">The category of the item.</param>
+    /// <exception cref="InvalidCategoryException">Thrown when the category is not valid.</exception>
+    public void AddItem(int id, string title, string description, string category)
+    {
+        var item = CreateValidatedItem(id, title, description, category);
+        _items[id] = item;
+    }
+
+    /// <summary>
+    /// Updates the description of an existing todo item.
+    /// </summary>
+    /// <param name="id">The unique identifier of the item to update.</param>
+    /// <param name="description">The new description.</param>
+    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
+    /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
+    public void UpdateItem(int id, string description)
+    {
+        var item = GetItemOrThrow(id);
+        ValidateAndUpdateItem(item, description);
+    }
+
+    /// <summary>
+    /// Removes a todo item from the list.
+    /// Business rule: Cannot remove items with more than 50% progress.
+    /// </summary>
+    /// <param name="id">The unique identifier of the item to remove.</param>
+    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
+    /// <exception cref="TodoItemCannotBeModifiedException">Thrown when the item has more than 50% progress.</exception>
+    public void RemoveItem(int id)
+    {
+        var item = GetItemOrThrow(id);
+        ValidateCanRemoveItem(item);
+        _items.Remove(id);
+    }
+
+    /// <summary>
+    /// Registers a progression entry for a todo item with validation.
+    /// </summary>
+    /// <param name="id">The unique identifier of the item.</param>
+    /// <param name="dateTime">The date of the progression.</param>
+    /// <param name="percent">The percentage of progress to add.</param>
+    /// <exception cref="TodoItemNotFoundException">Thrown when the item is not found.</exception>
+    /// <exception cref="InvalidProgressionException">Thrown when the progression is invalid.</exception>
+    public void RegisterProgression(int id, DateTime dateTime, decimal percent)
+    {
+        var item = GetItemOrThrow(id);
+        ValidateAndRegisterProgression(item, dateTime, percent);
     }
 
     private TodoItem GetItemOrThrow(int id)

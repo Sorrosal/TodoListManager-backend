@@ -3,6 +3,7 @@
 using FluentAssertions;
 using Moq;
 using TodoListManager.Domain.Aggregates;
+using TodoListManager.Domain.Entities;
 using TodoListManager.Domain.Exceptions;
 using TodoListManager.Domain.Services;
 using TodoListManager.Domain.Specifications;
@@ -452,6 +453,186 @@ public class TodoListTests
 
         // Assert
         items.Should().BeAssignableTo<IReadOnlyList<TodoListManager.Domain.Entities.TodoItem>>();
+    }
+
+    #endregion
+
+    #region CreateValidatedItem Tests
+
+    [Fact]
+    public void CreateValidatedItem_WithValidCategory_ShouldReturnValidatedItem()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+
+        // Act
+        var item = _todoList.CreateValidatedItem(1, "Task", "Description", "Work");
+
+        // Assert
+        item.Should().NotBeNull();
+        item.Id.Should().Be(1);
+        item.Title.Should().Be("Task");
+        item.Description.Should().Be("Description");
+        item.Category.Should().Be("Work");
+        _mockCategoryValidator.Verify(x => x.IsValidCategory("Work"), Times.Once);
+    }
+
+    [Fact]
+    public void CreateValidatedItem_WithInvalidCategory_ShouldThrowInvalidCategoryException()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("InvalidCategory")).Returns(false);
+
+        // Act
+        Action act = () => _todoList.CreateValidatedItem(1, "Task", "Description", "InvalidCategory");
+
+        // Assert
+        act.Should().Throw<InvalidCategoryException>()
+            .WithMessage("*InvalidCategory*");
+    }
+
+    [Fact]
+    public void CreateValidatedItem_ShouldNotAddItemToAggregate()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+
+        // Act
+        var item = _todoList.CreateValidatedItem(1, "Task", "Description", "Work");
+
+        // Assert
+        item.Should().NotBeNull();
+        _todoList.GetAllItems().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void CreateValidatedItem_WithEmptyTitle_ShouldThrowArgumentException()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+
+        // Act
+        Action act = () => _todoList.CreateValidatedItem(1, "", "Description", "Work");
+
+        // Assert
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Title*");
+    }
+
+    #endregion
+
+    #region ValidateAndUpdateItem Tests
+
+    [Fact]
+    public void ValidateAndUpdateItem_WithValidItem_ShouldUpdateDescription()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Original", "Work");
+
+        // Act
+        _todoList.ValidateAndUpdateItem(item, "Updated Description");
+
+        // Assert
+        item.Description.Should().Be("Updated Description");
+    }
+
+    [Fact]
+    public void ValidateAndUpdateItem_WithItemOver50Percent_ShouldThrowException()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Description", "Work");
+        item.AddProgression(DateTime.Now, 60m);
+
+        // Act
+        Action act = () => _todoList.ValidateAndUpdateItem(item, "New Description");
+
+        // Assert
+        act.Should().Throw<TodoItemCannotBeModifiedException>();
+    }
+
+    #endregion
+
+    #region ValidateAndRegisterProgression Tests
+
+    [Fact]
+    public void ValidateAndRegisterProgression_WithValidParameters_ShouldAddProgression()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Description", "Work");
+        var date = DateTime.Now;
+
+        // Act
+        _todoList.ValidateAndRegisterProgression(item, date, 25m);
+
+        // Assert
+        item.Progressions.Should().HaveCount(1);
+        item.GetTotalProgress().Should().Be(25m);
+    }
+
+    [Fact]
+    public void ValidateAndRegisterProgression_WithInvalidPercent_ShouldThrowException()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Description", "Work");
+
+        // Act
+        Action act = () => _todoList.ValidateAndRegisterProgression(item, DateTime.Now, 150m);
+
+        // Assert
+        act.Should().Throw<InvalidProgressionException>();
+    }
+
+    [Fact]
+    public void ValidateAndRegisterProgression_ThatExceeds100Percent_ShouldThrowException()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Description", "Work");
+        item.AddProgression(DateTime.Now, 60m);
+
+        // Act
+        Action act = () => _todoList.ValidateAndRegisterProgression(item, DateTime.Now.AddDays(1), 50m);
+
+        // Assert
+        act.Should().Throw<InvalidProgressionException>()
+            .WithMessage("*would exceed 100% total progress*");
+    }
+
+    #endregion
+
+    #region ValidateCanRemoveItem Tests
+
+    [Fact]
+    public void ValidateCanRemoveItem_WithValidItem_ShouldNotThrow()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Description", "Work");
+
+        // Act
+        Action act = () => _todoList.ValidateCanRemoveItem(item);
+
+        // Assert
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ValidateCanRemoveItem_WithItemOver50Percent_ShouldThrowException()
+    {
+        // Arrange
+        _mockCategoryValidator.Setup(x => x.IsValidCategory("Work")).Returns(true);
+        var item = new TodoItem(1, "Task", "Description", "Work");
+        item.AddProgression(DateTime.Now, 60m);
+
+        // Act
+        Action act = () => _todoList.ValidateCanRemoveItem(item);
+
+        // Assert
+        act.Should().Throw<TodoItemCannotBeModifiedException>();
     }
 
     #endregion

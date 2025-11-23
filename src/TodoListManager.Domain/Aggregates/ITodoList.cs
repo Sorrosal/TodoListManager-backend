@@ -10,6 +10,38 @@ namespace TodoListManager.Domain.Aggregates;
 public interface ITodoList
 {
     /// <summary>
+    /// Creates a new validated todo item without adding it to the aggregate.
+    /// This is a factory method that enforces business rules for item creation.
+    /// </summary>
+    /// <param name="id">The unique identifier.</param>
+    /// <param name="title">The title of the item.</param>
+    /// <param name="description">The description of the item.</param>
+    /// <param name="category">The category of the item.</param>
+    /// <returns>A validated TodoItem instance.</returns>
+    public TodoItem CreateValidatedItem(int id, string title, string description, string category);
+
+    /// <summary>
+    /// Validates and updates an existing item's description without loading the full aggregate.
+    /// </summary>
+    /// <param name="item">The item to update.</param>
+    /// <param name="description">The new description.</param>
+    public void ValidateAndUpdateItem(TodoItem item, string description);
+
+    /// <summary>
+    /// Validates and registers a progression for an existing item without loading the full aggregate.
+    /// </summary>
+    /// <param name="item">The item to add progression to.</param>
+    /// <param name="dateTime">The date of the progression.</param>
+    /// <param name="percent">The percentage of progress to add.</param>
+    public void ValidateAndRegisterProgression(TodoItem item, DateTime dateTime, decimal percent);
+
+    /// <summary>
+    /// Validates if an item can be removed without loading the full aggregate.
+    /// </summary>
+    /// <param name="item">The item to validate for removal.</param>
+    public void ValidateCanRemoveItem(TodoItem item);
+
+    /// <summary>
     /// Adds a new todo item to the list.
     /// </summary>
     /// <param name="id">The unique identifier.</param>
