@@ -12,6 +12,7 @@ using TodoListManager.Domain.Repositories;
 using TodoListManager.Domain.Services;
 using TodoListManager.Domain.Specifications;
 using TodoListManager.Infrastructure.Data;
+using TodoListManager.Infrastructure.Factories;
 using TodoListManager.Infrastructure.Identity;
 using TodoListManager.Infrastructure.Persistence;
 using TodoListManager.Infrastructure.Services;
@@ -78,9 +79,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CanModifyTodoItemSpecification>();
         services.AddSingleton<ValidProgressionSpecification>();
         
-        // Aggregates
-        services.AddScoped<TodoList>();
-        services.AddScoped<ITodoList>(sp => sp.GetRequiredService<TodoList>());
+        // Aggregate factory
+        services.AddScoped<ITodoListFactory, TodoListFactory>();
         
         return services;
     }

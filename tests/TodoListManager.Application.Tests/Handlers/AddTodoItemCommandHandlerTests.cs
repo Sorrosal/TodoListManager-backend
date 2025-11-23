@@ -21,6 +21,7 @@ public class AddTodoItemCommandHandlerTests
 {
     private readonly Mock<ITodoListRepository> _mockRepository;
     private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ITodoListFactory> _mockFactory;
     private readonly Mock<ICategoryValidator> _mockCategoryValidator;
     private readonly CanModifyTodoItemSpecification _canModifySpecification;
     private readonly ValidProgressionSpecification _validProgressionSpecification;
@@ -30,16 +31,19 @@ public class AddTodoItemCommandHandlerTests
     {
         _mockRepository = new Mock<ITodoListRepository>();
         _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _mockFactory = new Mock<ITodoListFactory>();
         _mockCategoryValidator = new Mock<ICategoryValidator>();
         _mockCategoryValidator.Setup(v => v.IsValidCategory(It.IsAny<string>())).Returns(true);
         _canModifySpecification = new CanModifyTodoItemSpecification();
         _validProgressionSpecification = new ValidProgressionSpecification();
+        
+        var aggregate = new TodoList(_mockCategoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
+        _mockFactory.Setup(f => f.Create()).Returns(aggregate);
+        
         _handler = new AddTodoItemCommandHandler(
-            _mockRepository.Object, 
-            _mockUnitOfWork.Object, 
-            _mockCategoryValidator.Object,
-            _canModifySpecification,
-            _validProgressionSpecification);
+            _mockRepository.Object,
+            _mockUnitOfWork.Object,
+            _mockFactory.Object);
     }
 
     #region Constructor Tests
@@ -49,11 +53,9 @@ public class AddTodoItemCommandHandlerTests
     {
         // Act
         var handler = new AddTodoItemCommandHandler(
-            _mockRepository.Object, 
-            _mockUnitOfWork.Object, 
-            _mockCategoryValidator.Object,
-            _canModifySpecification,
-            _validProgressionSpecification);
+            _mockRepository.Object,
+            _mockUnitOfWork.Object,
+            _mockFactory.Object);
 
         // Assert
         handler.Should().NotBeNull();
@@ -77,7 +79,7 @@ public class AddTodoItemCommandHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        _mockCategoryValidator.Verify(x => x.IsValidCategory("Work"), Times.Once);
+        _mockFactory.Verify(x => x.Create(), Times.Once);
         _mockRepository.Verify(x => x.SaveAsync(It.Is<TodoItem>(i => i.Id == 0 && i.Title == "Test Task"), It.IsAny<CancellationToken>()), Times.Once);
         _mockUnitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -296,6 +298,26 @@ public class AddTodoItemCommandHandlerTests
 
     #endregion
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

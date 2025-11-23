@@ -17,6 +17,7 @@ public class UpdateTodoItemCommandHandlerTests
 {
     private readonly Mock<ITodoListRepository> _mockRepository;
     private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ITodoListFactory> _mockFactory;
     private readonly Mock<ICategoryValidator> _mockCategoryValidator;
     private readonly CanModifyTodoItemSpecification _canModifySpecification;
     private readonly ValidProgressionSpecification _validProgressionSpecification;
@@ -26,16 +27,19 @@ public class UpdateTodoItemCommandHandlerTests
     {
         _mockRepository = new Mock<ITodoListRepository>();
         _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _mockFactory = new Mock<ITodoListFactory>();
         _mockCategoryValidator = new Mock<ICategoryValidator>();
         _mockCategoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
         _canModifySpecification = new CanModifyTodoItemSpecification();
         _validProgressionSpecification = new ValidProgressionSpecification();
+        
+        var aggregate = new TodoList(_mockCategoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
+        _mockFactory.Setup(f => f.Create()).Returns(aggregate);
+        
         _handler = new UpdateTodoItemCommandHandler(
-            _mockRepository.Object, 
+            _mockRepository.Object,
             _mockUnitOfWork.Object,
-            _mockCategoryValidator.Object,
-            _canModifySpecification,
-            _validProgressionSpecification);
+            _mockFactory.Object);
     }
 
     [Fact]
@@ -122,6 +126,7 @@ public class RemoveTodoItemCommandHandlerTests
 {
     private readonly Mock<ITodoListRepository> _mockRepository;
     private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ITodoListFactory> _mockFactory;
     private readonly Mock<ICategoryValidator> _mockCategoryValidator;
     private readonly CanModifyTodoItemSpecification _canModifySpecification;
     private readonly ValidProgressionSpecification _validProgressionSpecification;
@@ -131,16 +136,19 @@ public class RemoveTodoItemCommandHandlerTests
     {
         _mockRepository = new Mock<ITodoListRepository>();
         _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _mockFactory = new Mock<ITodoListFactory>();
         _mockCategoryValidator = new Mock<ICategoryValidator>();
         _mockCategoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
         _canModifySpecification = new CanModifyTodoItemSpecification();
         _validProgressionSpecification = new ValidProgressionSpecification();
+        
+        var aggregate = new TodoList(_mockCategoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
+        _mockFactory.Setup(f => f.Create()).Returns(aggregate);
+        
         _handler = new RemoveTodoItemCommandHandler(
-            _mockRepository.Object, 
+            _mockRepository.Object,
             _mockUnitOfWork.Object,
-            _mockCategoryValidator.Object,
-            _canModifySpecification,
-            _validProgressionSpecification);
+            _mockFactory.Object);
     }
 
     [Fact]
@@ -205,6 +213,7 @@ public class RegisterProgressionCommandHandlerTests
 {
     private readonly Mock<ITodoListRepository> _mockRepository;
     private readonly Mock<TodoListManager.Domain.Common.IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ITodoListFactory> _mockFactory;
     private readonly Mock<ICategoryValidator> _mockCategoryValidator;
     private readonly CanModifyTodoItemSpecification _canModifySpecification;
     private readonly ValidProgressionSpecification _validProgressionSpecification;
@@ -214,16 +223,19 @@ public class RegisterProgressionCommandHandlerTests
     {
         _mockRepository = new Mock<ITodoListRepository>();
         _mockUnitOfWork = new Mock<TodoListManager.Domain.Common.IUnitOfWork>();
+        _mockFactory = new Mock<ITodoListFactory>();
         _mockCategoryValidator = new Mock<ICategoryValidator>();
         _mockCategoryValidator.Setup(x => x.IsValidCategory(It.IsAny<string>())).Returns(true);
         _canModifySpecification = new CanModifyTodoItemSpecification();
         _validProgressionSpecification = new ValidProgressionSpecification();
+        
+        var aggregate = new TodoList(_mockCategoryValidator.Object, _canModifySpecification, _validProgressionSpecification);
+        _mockFactory.Setup(f => f.Create()).Returns(aggregate);
+        
         _handler = new RegisterProgressionCommandHandler(
-            _mockRepository.Object, 
+            _mockRepository.Object,
             _mockUnitOfWork.Object,
-            _mockCategoryValidator.Object,
-            _canModifySpecification,
-            _validProgressionSpecification);
+            _mockFactory.Object);
     }
 
     [Fact]
